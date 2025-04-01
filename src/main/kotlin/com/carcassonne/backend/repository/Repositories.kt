@@ -27,3 +27,11 @@ interface MeepleRepository : JpaRepository<Meeple, Long>
 // Repository for tracking each player action (history/log)
 @Repository
 interface MoveRepository : JpaRepository<Move, Long>
+
+// Repository for accessing and managing player scores during a game
+@Repository
+interface ScoreRepository : JpaRepository<Score, Long>
+
+// Repository for storing and retrieving in-game chat messages between players
+@Repository
+interface ChatMessageRepository : JpaRepository<ChatMessage, Long>
