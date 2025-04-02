@@ -8,8 +8,12 @@ import java.time.Instant
 data class Game(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0, // Unique game ID
+    val id: Long = 0,
 
-    val status: String = "", // E.g., "WAITING", "IN_PROGRESS", "FINISHED"
-    val createdAt: Instant = Instant.now() // For filtering, history, stats
+    @Column(unique = true)
+    val gameCode: String, // Random 6-char ID, e.g. "XY9D2A"
+
+    val status: String = "WAITING",
+
+    val createdAt: Instant = Instant.now()
 )
