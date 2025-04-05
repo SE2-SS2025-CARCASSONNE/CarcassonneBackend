@@ -3,9 +3,8 @@ name: SonarCloud Analysis
 on:
   push:
     branches:
-      - development
       - main
-      # <-- Make sure this matches your branch
+      - development
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -16,14 +15,14 @@ jobs:
 
     services:
       postgres:
-        image: postgres:latest        # Use the latest PostgreSQL image
+        image: postgres:latest
         env:
-          POSTGRES_USER: casscaronneUser     # Set the PostgreSQL user
-          POSTGRES_PASSWORD: carcassonne123 # Set the PostgreSQL password
-          POSTGRES_DB: carcassonne        # Set the database name
+          POSTGRES_USER: casscaronneUser
+          POSTGRES_PASSWORD: carcassonne123
+          POSTGRES_DB: carcassonne
         ports:
-          - 5432:5432                 # Map the PostgreSQL port
-        options: --health-cmd="pg_isready -U postgres" --health-timeout=30s --health-start-period=5s --health-retries=3 # Ensure database is ready before running tests
+          - 5432:5432
+        options: --health-cmd="pg_isready -U postgres" --health-timeout=30s --health-start-period=5s --health-retries=3
 
     steps:
       - name: Checkout code
@@ -47,6 +46,9 @@ jobs:
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         with:
-          projectBaseDir: .
+          args: >
+            -Dsonar.projectKey=SE2-SS2025-CARCASSONNE_CarcassonneBackend
+            -Dsonar.organization=SE2_SS2025_GruppeC
+            -Dsonar.host.url=https://sonarcloud.io
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
