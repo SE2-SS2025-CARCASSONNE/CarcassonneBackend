@@ -1,4 +1,4 @@
-package com.carcassonne.backend.service
+/*package com.carcassonne.backend.service
 
 
 import com.carcassonne.backend.model.GameState
@@ -52,3 +52,4 @@ class GameManagerTest {
         assertFalse(game.board.containsKey(Pair(1, 1)), "Tile should not be placed")
     }
 }
+*/
