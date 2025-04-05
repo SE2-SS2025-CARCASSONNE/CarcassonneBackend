@@ -3,7 +3,7 @@ name: SonarCloud Analysis
 on:
   push:
     branches:
-      - main  # <-- Make sure this matches your branch
+      - development  # <-- Make sure this matches your branch
   pull_request:
     types: [opened, synchronize, reopened]
 
