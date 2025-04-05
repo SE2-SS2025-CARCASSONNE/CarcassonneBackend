@@ -17,8 +17,8 @@ jobs:
       postgres:
         image: postgres:latest
         env:
-          POSTGRES_USER: casscaronneUser
-          POSTGRES_PASSWORD: carcassonne123
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: admin
           POSTGRES_DB: carcassonne
         ports:
           - 5432:5432
@@ -48,7 +48,7 @@ jobs:
         with:
           args: >
             -Dsonar.projectKey=SE2-SS2025-CARCASSONNE_CarcassonneBackend
-            -Dsonar.organization=SE2_SS2025_GruppeC
+            -Dsonar.organization=SE2-SS2025-GruppeC
             -Dsonar.host.url=https://sonarcloud.io
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
