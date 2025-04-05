@@ -3,7 +3,7 @@ name: SonarCloud Analysis
 on:
   push:
     branches:
-      - sonarcloud-test   # <-- Change this to your branch
+      - development   # <-- Change this to `development` branch
   pull_request:
     types: [opened, synchronize, reopened]
 
