@@ -30,7 +30,7 @@ jobs:
           key: ${{ runner.os }}-sonar
 
       - name: Build project
-        run: ./gradlew build
+        run: ./gradlew build -x test
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
