@@ -1,5 +1,6 @@
 package com.carcassonne.backend.config
 import com.carcassonne.backend.model.GameMessage
+import com.carcassonne.backend.repository.GameRepository
 import com.carcassonne.backend.service.GameManager
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.handler.annotation.Payload
@@ -9,7 +10,8 @@ import org.springframework.stereotype.Controller
 @Controller
 class GameWebSocketController(
     private val gameManager: GameManager,
-    private val messagingTemplate: SimpMessagingTemplate
+    private val messagingTemplate: SimpMessagingTemplate,
+    private val gameRepository: GameRepository
 ) {
 
     @MessageMapping("/game/send") // from client to /app/game/send
@@ -45,6 +47,16 @@ class GameWebSocketController(
                     val error = mapOf("type" to "error", "message" to "Invalid move or not your turn")
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
                 }
+            }
+            "start_game" -> {
+                val game = gameManager.getOrCreateGame(msg.gameId)
+                game.status = "STARTED"
+                gameRepository.updateStatusByGameCode(msg.gameId, "STARTED")
+                val payload = mapOf(
+                    "type" to "game_started",
+                    "gameId" to msg.gameId
+                )
+                messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
             }
         }
     }
