@@ -10,7 +10,9 @@ import org.springframework.stereotype.Repository
 
 // Repository for managing User entities
 @Repository
-interface UserRepository : JpaRepository<User, Long>
+interface UserRepository : JpaRepository<User, Long> {
+    fun findUserByUsername(username: String): User?
+}
 
 // Repository for managing Game entities (game session info)
 @Repository
