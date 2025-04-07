@@ -4,7 +4,6 @@ import com.carcassonne.backend.entity.Game
 import com.carcassonne.backend.repository.GameRepository
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
 import java.time.Instant
 
@@ -12,6 +11,7 @@ import java.time.Instant
 @RequestMapping("/api/game")
 @Tag(name = "Game", description = "Game control endpoints")
 class GameController(
+    //Inject dependency via constructor
     private val gameRepository: GameRepository
 ) {
 

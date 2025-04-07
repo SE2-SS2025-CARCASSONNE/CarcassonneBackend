@@ -2,7 +2,7 @@ package com.carcassonne.backend.controller
 
 import com.carcassonne.backend.model.GameState
 import com.carcassonne.backend.service.GameManager
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
@@ -22,17 +22,46 @@ class GameRestControllerTest {
     }
 
     @Test
-    //Server should return GameState corresponding to gameId
+    //getGame should return HTTP 200 and GameState corresponding to gameId
     fun getGameTest() {
-        val exGameId = "A5KF01"
-        val gameState = GameState(gameId = exGameId)
+        val exampleId = "A5KF01"
+        val gameState = GameState(gameId = exampleId)
 
-        `when`(gameManager.getOrCreateGame(exGameId)).thenReturn(gameState)
-        val response: ResponseEntity<GameState> = gameRestController.getGame(exGameId)
+        `when`(gameManager.getOrCreateGame(exampleId)).thenReturn(gameState)
+        val response: ResponseEntity<GameState> = gameRestController.getGame(exampleId)
 
         assertEquals(200, response.statusCode.value())
         assertEquals(gameState, response.body)
-        verify(gameManager, times(1)).getOrCreateGame(exGameId)
+        verify(gameManager, times(1)).getOrCreateGame(exampleId)
+    }
+
+    @Test
+    //getGame should handle invalid/empty gameId and still return something
+    fun getGameInvalidGameIdTest() {
+        val emptyId = ""
+        val gameState = GameState(gameId = emptyId)
+
+        `when`(gameManager.getOrCreateGame(emptyId)).thenReturn(gameState)
+        val response = gameRestController.getGame(emptyId)
+
+        assertEquals(200, response.statusCode.value())
+        assertEquals(gameState, response.body)
+        verify(gameManager).getOrCreateGame(emptyId)
+    }
+
+    @Test
+    //getGame should throw an exception if GameManager fails
+    fun getGameThrowExceptionTest() {
+        val exampleId = "Error001"
+
+        `when`(gameManager.getOrCreateGame(exampleId)).thenThrow(RuntimeException("Critical error"))
+
+        val exception = assertThrows(RuntimeException::class.java) {
+            gameRestController.getGame(exampleId)
+        }
+
+        assertEquals("Critical error", exception.message)
+        verify(gameManager).getOrCreateGame(exampleId)
     }
 
 }
