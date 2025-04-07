@@ -11,10 +11,9 @@ import java.time.Instant
 @RestController
 @RequestMapping("/api/game")
 @Tag(name = "Game", description = "Game control endpoints")
-class GameController {
-
-    @Autowired
-    private lateinit var gameRepository: GameRepository
+class GameController(
+    private val gameRepository: GameRepository
+) {
 
     data class CreateGameRequest(val playerCount: Int)
     data class CreateGameResponse(val gameId: String)
