@@ -1,4 +1,5 @@
-package com.carcassonne.backend.config
+package com.carcassonne.backend.controller
+
 import com.carcassonne.backend.model.GameMessage
 import com.carcassonne.backend.repository.GameRepository
 import com.carcassonne.backend.service.GameManager
