@@ -16,7 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter
 class JwtFilter(
     private val jwtUtil: JwtUtil, //Inject dependency via constructor
     private val userDetailsService: UserDetailsService
-) : OncePerRequestFilter() {
+): OncePerRequestFilter() {
 
     override fun doFilterInternal(
         request: HttpServletRequest,
