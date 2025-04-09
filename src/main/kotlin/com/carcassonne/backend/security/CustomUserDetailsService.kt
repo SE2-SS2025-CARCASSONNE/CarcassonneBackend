@@ -1,4 +1,4 @@
-package com.carcassonne.backend.service
+package com.carcassonne.backend.security
 
 import com.carcassonne.backend.repository.UserRepository
 import com.carcassonne.backend.entity.User
