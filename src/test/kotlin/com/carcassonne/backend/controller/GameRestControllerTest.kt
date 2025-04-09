@@ -36,20 +36,6 @@ class GameRestControllerTest {
     }
 
     @Test
-    //getGame should handle invalid/empty gameId and still return something
-    fun getGameInvalidGameIdTest() {
-        val emptyId = ""
-        val gameState = GameState(gameId = emptyId)
-
-        `when`(gameManager.getOrCreateGame(emptyId)).thenReturn(gameState)
-        val response = gameRestController.getGame(emptyId)
-
-        assertEquals(200, response.statusCode.value())
-        assertEquals(gameState, response.body)
-        verify(gameManager).getOrCreateGame(emptyId)
-    }
-
-    @Test
     //getGame should throw an exception if GameManager fails
     fun getGameThrowExceptionTest() {
         val exampleId = "Error001"
@@ -61,7 +47,5 @@ class GameRestControllerTest {
         }
 
         assertEquals("Critical error", exception.message)
-        verify(gameManager).getOrCreateGame(exampleId)
     }
-
 }

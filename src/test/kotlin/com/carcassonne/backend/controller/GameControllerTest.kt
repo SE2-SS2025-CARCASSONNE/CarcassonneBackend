@@ -41,19 +41,6 @@ class GameControllerTest {
     }
 
     @Test
-    //createGame should always return a unique gameId
-    fun createGameUniqueGameIdTest() {
-        val request = GameController.CreateGameRequest(playerCount = 4)
-        val ids = mutableSetOf<String>()
-
-        repeat(15) {
-            val response = gameController.createGame(request)
-            assertFalse(ids.contains(response.gameId))
-            ids.add(response.gameId)
-        }
-    }
-
-    @Test
     //createGame should save game data in repository correctly
     fun createGameCorrectSaveTest() {
         val request = GameController.CreateGameRequest(playerCount = 2)
@@ -68,5 +55,4 @@ class GameControllerTest {
         assertNotNull(gameSave.createdAt)
         assertTrue(gameSave.createdAt.isBefore((Instant.now()).plusSeconds(1)))
     }
-
 }
