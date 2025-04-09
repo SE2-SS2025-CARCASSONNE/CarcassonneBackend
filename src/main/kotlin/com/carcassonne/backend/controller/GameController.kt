@@ -11,8 +11,7 @@ import java.time.Instant
 @RequestMapping("/api/game")
 @Tag(name = "Game", description = "Game control endpoints")
 class GameController(
-    //Inject dependency via constructor
-    private val gameRepository: GameRepository
+    private val gameRepository: GameRepository //Inject dependency via constructor
 ) {
 
     data class CreateGameRequest(val playerCount: Int)
