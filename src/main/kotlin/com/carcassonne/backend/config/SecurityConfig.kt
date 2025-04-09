@@ -24,7 +24,14 @@ class SecurityConfig(
 
             .authorizeHttpRequests { auth ->
                 auth
-                    .requestMatchers("/api/auth/**").permitAll() //Auth endpoints open to everybody (to login/register)
+                    .requestMatchers(//Swagger endpoints should be restricted in production
+                        "/api/auth/**",
+                        "/api/game/ping",
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "swagger-resources/**",
+                        "/webjars/**")
+                    .permitAll() //Auth endpoints open to everybody (to login/register)
                     .anyRequest().authenticated() //Other endpoints only open to authenticated users
             }
 

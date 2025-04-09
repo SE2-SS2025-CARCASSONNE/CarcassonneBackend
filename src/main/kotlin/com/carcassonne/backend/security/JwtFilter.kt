@@ -25,7 +25,7 @@ class JwtFilter(
     ) {
         val authHeader = request.getHeader("Authorization") //Read auth header from request
 
-        if (authHeader.startsWith("Bearer ")) { //Check if Bearer auth scheme is used
+        if (authHeader!=null && authHeader.startsWith("Bearer ")) { //Check if authHeader exists and Bearer scheme is used
             val token = authHeader.substring(7) //Remove "Bearer " prefix to extract JWT string
             val username = jwtUtil.extractUsername(token)
 

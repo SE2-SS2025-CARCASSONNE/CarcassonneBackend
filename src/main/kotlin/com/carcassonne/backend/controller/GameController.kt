@@ -21,7 +21,7 @@ class GameController(
     @GetMapping("/ping")
     fun ping(): String = "pong"
 
-    @Operation(summary = "Create a new game")
+    @Operation(summary = "Create new game")
     @PostMapping("/create")
     fun createGame(@RequestBody request: CreateGameRequest): CreateGameResponse {
         val code = generateGameId()

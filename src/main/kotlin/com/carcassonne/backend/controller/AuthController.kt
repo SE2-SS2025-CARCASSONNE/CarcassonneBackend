@@ -6,6 +6,7 @@ import com.carcassonne.backend.entity.User
 import com.carcassonne.backend.security.JwtUtil
 import com.carcassonne.backend.security.CustomUserDetailsService
 import com.carcassonne.backend.service.UserService
+import io.swagger.v3.oas.annotations.Operation
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -29,6 +30,7 @@ class AuthController(
     private val pwEncoder: BCryptPasswordEncoder,
 ) {
 
+    @Operation(summary = "Sign in existing user")
     @PostMapping("/login") //User login endpoint
     fun login(@RequestBody loginRequest: LoginRequest): ResponseEntity<Map<String, String>> {
         return try {
@@ -49,6 +51,7 @@ class AuthController(
         }
     }
 
+    @Operation(summary = "Register new user")
     @PostMapping("/register") //User registration endpoint
     fun register(@RequestBody registerRequest: RegisterRequest): ResponseEntity<Map<String, String>> {
         if (registerRequest.username.isBlank() || registerRequest.password.isBlank()) { //Check if username or password field is blank, return HTTP 400 if yes
