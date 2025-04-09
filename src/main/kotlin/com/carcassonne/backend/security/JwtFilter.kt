@@ -32,7 +32,7 @@ class JwtFilter(
             if (SecurityContextHolder.getContext().authentication == null) { //Check if other user is logged in on this request
                 val userDetails: UserDetails = userDetailsService.loadUserByUsername(username) //Load user details from DB
 
-                if (jwtUtil.isTokenValid(token, userDetails)) { //Check if JWT is valid for this user
+                if (jwtUtil.tokenValid(token, userDetails)) { //Check if JWT is valid for this user
                     val authToken = UsernamePasswordAuthenticationToken( //Create security token
                         userDetails, null, userDetails.authorities)
 
