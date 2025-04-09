@@ -74,6 +74,6 @@ tasks.jacocoTestReport {
 
 	reports {
 		xml.required.set(true) //Needed for SonarCloud
-		html.required.set(true) //Set true for local review
+		html.required.set(false) //Set true for local review
 	}
 }
