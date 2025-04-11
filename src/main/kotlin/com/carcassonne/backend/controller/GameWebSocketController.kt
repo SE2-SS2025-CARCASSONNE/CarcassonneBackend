@@ -1,6 +1,7 @@
 package com.carcassonne.backend.controller
 
 import com.carcassonne.backend.model.GameMessage
+import com.carcassonne.backend.model.GamePhase
 import com.carcassonne.backend.repository.GameRepository
 import com.carcassonne.backend.service.GameManager
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -53,11 +54,11 @@ class GameWebSocketController(
                 println(">>> [Backend] Received start_game for ${msg.gameId}")
 
                 val game = gameManager.getOrCreateGame(msg.gameId)
-                game.status = "STARTED"
+                game.status = GamePhase.TILE_PLACEMENT
 
                 // Update DB
                 try {
-                    gameRepository.updateStatusByGameCode(msg.gameId, "STARTED")
+                    gameRepository.updateStatusByGameCode(msg.gameId, GamePhase.TILE_PLACEMENT)
                     println(">>> [Backend] Game status updated in DB")
                 } catch (e: Exception) {
                     println(">>> [Backend] ERROR updating DB: ${e.message}")

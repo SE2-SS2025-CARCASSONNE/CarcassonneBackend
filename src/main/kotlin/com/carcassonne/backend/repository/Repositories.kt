@@ -1,6 +1,7 @@
 package com.carcassonne.backend.repository
 
 import com.carcassonne.backend.entity.*
+import com.carcassonne.backend.model.GamePhase
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -21,7 +22,10 @@ interface GameRepository : JpaRepository<Game, Long> {
     @Modifying
     @Transactional
     @Query("UPDATE Game g SET g.status = :status WHERE g.gameCode = :gameCode")
-    fun updateStatusByGameCode(@Param("gameCode") gameCode: String, @Param("status") status: String)
+    fun updateStatusByGameCode(@Param("gameCode") gameCode: String, @Param("status") status: GamePhase)
+
+//    @Query("SELECT * FROM Game g WHERE g.gameCode = :gameCode")
+//    fun findByGamePhase(gamePhase: GamePhase): List<Game>
 }
 
 // Repository for tracking which users are in which games
@@ -29,8 +33,8 @@ interface GameRepository : JpaRepository<Game, Long> {
 interface GamePlayerRepository : JpaRepository<GamePlayer, Long>
 
 // Repository for all placed tiles on the game board
-@Repository
-interface TileRepository : JpaRepository<Tile, Long>
+//@Repository
+//interface TileRepository : JpaRepository<Tile, Long>
 
 // Repository for meeples placed on features
 @Repository
