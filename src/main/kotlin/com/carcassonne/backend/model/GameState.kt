@@ -3,9 +3,9 @@ package com.carcassonne.backend.model
 data class GameState(
     val gameId: String,
     val players: MutableList<String> = mutableListOf(),
-    val board: MutableMap<String, Tile> = mutableMapOf(),
+    val board: MutableMap<Position, Tile> = mutableMapOf(),
     var currentPlayerIndex: Int = 0,
-    var status: String = "WAITING",
+    var status: GamePhase = GamePhase.WAITING,
     val tileDeck: MutableList<Tile> = mutableListOf() // The tile deck can be managed here.
 ) {
     // Switch to the next player
@@ -20,7 +20,7 @@ data class GameState(
     // Start the game (change status to IN_PROGRESS)
     fun startGame() {
         if (players.size >= 2) {
-            status = "IN_PROGRESS"
+            status = GamePhase.TILE_PLACEMENT
         } else {
             throw IllegalStateException("At least 2 players are needed to start the game")
         }
@@ -28,12 +28,12 @@ data class GameState(
 
     // Finish the game (change status to FINISHED)
     fun finishGame() {
-        status = "FINISHED"
+        status = GamePhase.FINISHED
     }
 
     // Add a player to the game
     fun addPlayer(player: String) {
-        if (status == "WAITING" && players.size < 4) {
+        if (status == GamePhase.WAITING && players.size < 4) {
             players.add(player)
         } else {
             throw IllegalStateException("Game already started or max players reached")
@@ -41,9 +41,9 @@ data class GameState(
     }
 
     // Place a tile on the board
-    fun placeTile(tile: Tile, position: String) {
-        if (status != "IN_PROGRESS") {
-            throw IllegalStateException("Game is not in progress")
+    fun placeTile(tile: Tile, position: Position) {
+        if (status != GamePhase.TILE_PLACEMENT) {
+            throw IllegalStateException("Game is not in tile placement phase")
         }
         board[position] = tile
     }
@@ -63,4 +63,12 @@ data class GameState(
         // Implement scoring logic here !!!
         return 0
     }
+}
+
+enum class GamePhase {
+    WAITING,
+    TILE_PLACEMENT,
+    MEEPLE_PLACEMENT,
+    SCORING,
+    FINISHED
 }
