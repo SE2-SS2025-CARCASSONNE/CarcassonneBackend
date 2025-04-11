@@ -39,6 +39,17 @@ class GameManager {
         return shuffledDeck
     }
 
+    // Function to draw a tile for the current player
+    fun drawTileForPlayer(gameId: String): Tile? {
+        val game = games[gameId] ?: return null
+        val tile = game.drawTile() // Use the drawTile method from GameState to get a tile
+        if (tile != null) {
+            return tile
+        }
+        return null // Return null if no tile is available
+    }
+
+
 
 
     fun placeTile(gameId: String, tile: Tile, player: String): GameState? {
