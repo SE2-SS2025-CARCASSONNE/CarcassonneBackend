@@ -1,9 +1,6 @@
 package com.carcassonne.backend.service
 
-import com.carcassonne.backend.model.GameState
-import com.carcassonne.backend.model.TerrainType
-import com.carcassonne.backend.model.Tile
-import com.carcassonne.backend.model.TileRotation
+import com.carcassonne.backend.model.*
 import org.springframework.stereotype.Component
 import kotlin.random.Random
 
@@ -46,13 +43,31 @@ class GameManager {
 
     fun placeTile(gameId: String, tile: Tile, player: String): GameState? {
         val game = games[gameId] ?: return null
-        if (game.getCurrentPlayer() != player) return null
+        if (game.status != GamePhase.TILE_PLACEMENT) {
+            throw IllegalStateException("Game is not in tile placement phase")
+        }
+        val currentPlayer = game.getCurrentPlayer()
+        if (currentPlayer != player) {
+            throw IllegalStateException("Not player's turn")
+        }
+        val currentTile = game.tileDeck.removeFirst() ?: throw NoSuchElementException("Tile not found")
 
-       // val key = "${tile.x},${tile.y}"
-        //game.board[key] = tile
+        // check whether tile.position is valid -> see helper function below
+        if (!isValidPosition(game, currentTile, currentTile.position, currentTile.tileRotation)){
+            throw IllegalStateException("Tile is not in tile placement phase")
+        }
+
+        game.board.set(tile.position!!, currentTile)
+        game.status = GamePhase.MEEPLE_PLACEMENT
+
         game.nextPlayer()
         return game
     }
+
+    private fun isValidPosition(game: GameState, tile: Tile, position: Position?, tileRotation: TileRotation): Boolean {
+        return true
+    }
+
     fun createGameWithHost(gameId: String, hostName: String): GameState {
         val game = GameState(gameId)
         game.players.add(hostName)
