@@ -15,8 +15,15 @@ class GameManager {
         val game = games[gameId] ?: return null
         if (game.getCurrentPlayer() != player) return null
 
-        game.board[Pair(tile.x, tile.y)] = tile
+       // val key = "${tile.x},${tile.y}"
+        //game.board[key] = tile
         game.nextPlayer()
+        return game
+    }
+    fun createGameWithHost(gameId: String, hostName: String): GameState {
+        val game = GameState(gameId)
+        game.players.add(hostName)
+        games[gameId] = game
         return game
     }
 }

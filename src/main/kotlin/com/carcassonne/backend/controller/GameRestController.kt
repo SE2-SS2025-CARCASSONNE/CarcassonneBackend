@@ -15,7 +15,14 @@ class GameRestController(
 ) {
     @Operation(summary = "Retrieve game by id")
     @GetMapping("/{gameId}")
-    fun getGame(@PathVariable gameId: String): ResponseEntity<GameState> {
-        return ResponseEntity.ok(gameManager.getOrCreateGame(gameId))
+    fun getGame(
+        @PathVariable gameId: String,
+        @RequestHeader(value = "Authorization", required = false) authHeader: String?
+    ): ResponseEntity<GameState> {
+        println(">>> [DEBUG] GET /api/game/$gameId")
+        println(">>> [DEBUG] Authorization Header: $authHeader")
+
+        val game = gameManager.getOrCreateGame(gameId)
+        return ResponseEntity.ok(game)
     }
 }

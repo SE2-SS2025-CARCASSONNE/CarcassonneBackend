@@ -2,6 +2,7 @@ package com.carcassonne.backend.controller
 
 import com.carcassonne.backend.entity.Game
 import com.carcassonne.backend.repository.GameRepository
+import com.carcassonne.backend.service.GameManager
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.web.bind.annotation.*
@@ -11,10 +12,11 @@ import java.time.Instant
 @RequestMapping("/api/game")
 @Tag(name = "Game", description = "Game control endpoints")
 class GameController(
-    private val gameRepository: GameRepository //Inject dependency via constructor
+    private val gameRepository: GameRepository, //Inject dependency via constructor
+    private val gameManager: GameManager
 ) {
 
-    data class CreateGameRequest(val playerCount: Int)
+    data class CreateGameRequest(val playerCount: Int, val hostName: String)
     data class CreateGameResponse(val gameId: String)
 
     @Operation(summary = "Ping the server")
@@ -33,6 +35,7 @@ class GameController(
         )
 
         gameRepository.save(game)
+        gameManager.createGameWithHost(code, request.hostName)
 
         return CreateGameResponse(gameId = code)
     }
