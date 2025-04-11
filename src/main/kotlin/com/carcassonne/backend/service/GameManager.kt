@@ -1,8 +1,11 @@
 package com.carcassonne.backend.service
 
 import com.carcassonne.backend.model.GameState
+import com.carcassonne.backend.model.TerrainType
 import com.carcassonne.backend.model.Tile
+import com.carcassonne.backend.model.TileRotation
 import org.springframework.stereotype.Component
+import kotlin.random.Random
 
 @Component
 class GameManager {
@@ -10,6 +13,36 @@ class GameManager {
 
     fun getOrCreateGame(gameId: String): GameState =
         games.getOrPut(gameId) { GameState(gameId) }
+
+    // Function to create a shuffled tile deck
+    fun createShuffledTileDeck(seed: Long): List<Tile> {
+        // Generate a predefined set of tiles (for demonstration)
+        val predefinedTiles = mutableListOf<Tile>()
+
+        // Populate predefined tiles
+        TerrainType.values().forEach { terrain ->
+            // For simplicity, create 5 tiles of each terrain type
+            repeat(5) {
+                predefinedTiles.add(
+                    Tile(
+                        id = "${terrain}_${it}",
+                        terrainNorth = terrain,
+                        terrainEast = terrain,
+                        terrainSouth = terrain,
+                        terrainWest = terrain,
+                        tileRotation = TileRotation.NORTH
+                    )
+                )
+            }
+        }
+
+        // Shuffle tiles using a seed for consistent randomness
+        val shuffledDeck = predefinedTiles.shuffled(Random(seed))
+
+        return shuffledDeck
+    }
+
+
 
     fun placeTile(gameId: String, tile: Tile, player: String): GameState? {
         val game = games[gameId] ?: return null
