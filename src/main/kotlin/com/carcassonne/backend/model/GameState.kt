@@ -6,7 +6,8 @@ data class GameState(
     val board: MutableMap<Position, Tile> = mutableMapOf(),
     var currentPlayerIndex: Int = 0,
     var status: GamePhase = GamePhase.WAITING,
-    val tileDeck: MutableList<Tile> = mutableListOf() // The tile deck can be managed here.
+    val tileDeck: MutableList<Tile> = mutableListOf(), // The tile deck can be managed here.
+    val meeplesOnBoard: MutableList<Meeple> = mutableListOf() // Liste der platzierten Meeples
 ) {
     // Switch to the next player
     fun nextPlayer(): String {
