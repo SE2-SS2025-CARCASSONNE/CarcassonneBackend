@@ -2,6 +2,7 @@ package com.carcassonne.backend.controller
 
 import com.carcassonne.backend.entity.Game
 import com.carcassonne.backend.model.Tile
+import com.carcassonne.backend.model.Player
 import com.carcassonne.backend.repository.GameRepository
 import com.carcassonne.backend.service.GameManager
 import io.swagger.v3.oas.annotations.Operation
@@ -19,7 +20,7 @@ class GameController(
     private val gameManager: GameManager
 ) {
 
-    data class CreateGameRequest(val playerCount: Int, val hostName: String)
+    data class CreateGameRequest(val playerCount: Int, val hostName: Player)
     data class CreateGameResponse(val gameId: String)
 
     @Operation(summary = "Ping the server")
