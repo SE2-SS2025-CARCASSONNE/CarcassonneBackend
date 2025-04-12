@@ -50,10 +50,13 @@ class GameManager {
     }
 
 
-
-
+    /**
+     * returns the new Game state
+     * @param gameId is needed to find the game
+     */
     fun placeTile(gameId: String, tile: Tile, player: String): GameState? {
         val game = games[gameId] ?: return null
+
         if (game.status != GamePhase.TILE_PLACEMENT) {
             throw IllegalStateException("Game is not in tile placement phase")
         }
@@ -61,21 +64,83 @@ class GameManager {
         if (currentPlayer != player) {
             throw IllegalStateException("Not player's turn")
         }
-        val currentTile = game.tileDeck.removeFirst() ?: throw NoSuchElementException("Tile not found")
 
         // check whether tile.position is valid -> see helper function below
-        if (!isValidPosition(game, currentTile, currentTile.position, currentTile.tileRotation)){
+        if (!isValidPosition(game, tile, tile.position, tile.tileRotation)){
             throw IllegalStateException("Tile is not in tile placement phase")
         }
+        game.placeTile(tile, tile.position!!)
 
-        game.board.set(tile.position!!, currentTile)
-        game.status = GamePhase.MEEPLE_PLACEMENT
-
-        game.nextPlayer()
+//        game.nextPlayer() move to
         return game
     }
 
+    /**
+     * Helper method to determine validity of position in the context of tile placement
+     * returns true if tile can be placed at the desired position
+     */
     private fun isValidPosition(game: GameState, tile: Tile, position: Position?, tileRotation: TileRotation): Boolean {
+        if (position == null){
+            throw IllegalArgumentException("Position can not be null")
+        }
+        val leftNeighborPosition: Position = Position(position.x - 1, position.y)
+        val rightNeighborPosition: Position = Position(position.x + 1, position.y)
+        val topNeighborPosition: Position = Position(position.x, position.y + 1)
+        val bottomNeighborPosition: Position = Position(position.x, position.y - 1)
+
+
+        val leftNeighbor: Tile? = game.board[leftNeighborPosition]
+        val rightNeighbor: Tile? = game.board[rightNeighborPosition]
+        val topNeighbor: Tile? = game.board[topNeighborPosition]
+        val bottomNeighbor: Tile? = game.board[bottomNeighborPosition]
+        val neighbors = mutableListOf(leftNeighbor, rightNeighbor, topNeighbor, bottomNeighbor)
+
+        if(isListOfNulls(neighbors)) {
+            return false
+        }
+
+        for(placedTile in game.board.values) {
+            if (position == placedTile.position) {
+                return false
+            }
+        }
+        for (neighbor in neighbors){
+            if (neighbor == null) {
+                continue
+            } else {
+                if (neighbor.position == leftNeighborPosition && neighbor.terrainEast != tile.terrainWest) {
+                    return false
+                }
+                if (neighbor.position == rightNeighborPosition && neighbor.terrainWest != tile.terrainEast) {
+                    return false
+                }
+                if (neighbor.position == topNeighborPosition && neighbor.terrainSouth != tile.terrainNorth) {
+                    return false
+                }
+                if (neighbor.position == bottomNeighborPosition && neighbor.terrainNorth != tile.terrainSouth) {
+                    return false
+                }
+
+            }
+        }
+        // only return true if more than 0 neighbors exist &&
+        // leftNeighbor.terrainEast == tile.terrainWest &&
+        // rightNeighbor.terrainWest == tile.terrainEast &&
+        // topNeighbor.terrainSouth == tile.terrainNorth &&
+        // bottomNeighbor.terrainNorth == tile.terrainSouth
+        return true
+    }
+
+    /**
+     * Helper function to sort out game board positions without neighbors
+     * returns true if tile list contains only null values
+     */
+    private fun isListOfNulls(tiles: MutableList<Tile?>): Boolean {
+        for (tile in tiles) {
+            if (tile != null) {
+                return false
+            }
+        }
         return true
     }
 
