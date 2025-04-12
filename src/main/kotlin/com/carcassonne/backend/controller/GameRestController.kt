@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/api/game")
 @Tag(name = "Game", description = "Game retrieval endpoints")
-class GameRestController(
+class dGameRestController(
     private val gameManager: GameManager
 ) {
     @Operation(summary = "Retrieve game by id")

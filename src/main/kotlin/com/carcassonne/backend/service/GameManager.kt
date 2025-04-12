@@ -54,14 +54,14 @@ class GameManager {
      * returns the new Game state
      * @param gameId is needed to find the game
      */
-    fun placeTile(gameId: String, tile: Tile, player: String): GameState? {
+    fun placeTile(gameId: String, tile: Tile, player: Player): GameState? {
         val game = games[gameId] ?: return null
 
         if (game.status != GamePhase.TILE_PLACEMENT) {
             throw IllegalStateException("Game is not in tile placement phase")
         }
         val currentPlayer = game.getCurrentPlayer()
-        if (currentPlayer != player) {
+        if (currentPlayer.id != player.id) {
             throw IllegalStateException("Not player's turn")
         }
 
@@ -73,7 +73,39 @@ class GameManager {
 
 //        game.nextPlayer() move to
         return game
+
     }
+    fun calculatePoints(gameId: String, player: Player): GameState?
+    {
+        // Überprüfung null wert Spiel, falsche Game-Phase
+
+        val game = games[gameId] ?: return null
+        if (game.status != GamePhase.SCORING) {
+            throw IllegalStateException("Game is not in Scoring Phase")
+        }
+        //Überprüfung Spieler, der gerade an der Reihe ist, muss auch der übergebene Spieler sein
+        val currentPlayer = game.getCurrentPlayer()
+        if (currentPlayer.id != player.id) {
+            throw IllegalStateException("Not player's turn")
+        }
+        val addPoints = 0;
+        if(isCityFinished())
+        {
+
+        }
+        if(isStreetFinished())
+        {
+
+        }
+        player.score += addPoints;
+        game.status= GamePhase.TILE_PLACEMENT
+        game.nextPlayer()
+        return game
+
+    }
+
+
+
 
     /**
      * Helper method to determine validity of position in the context of tile placement
@@ -130,6 +162,13 @@ class GameManager {
         // bottomNeighbor.terrainNorth == tile.terrainSouth
         return true
     }
+    private fun isCityFinished(): Boolean{
+        return false;
+    }
+
+    private fun isStreetFinished(): Boolean{
+        return false;
+    }
 
     /**
      * Helper function to sort out game board positions without neighbors
@@ -144,7 +183,9 @@ class GameManager {
         return true
     }
 
-    fun createGameWithHost(gameId: String, hostName: String): GameState {
+
+
+    fun createGameWithHost(gameId: String, hostName: Player): GameState {
         val game = GameState(gameId)
         game.players.add(hostName)
         games[gameId] = game
