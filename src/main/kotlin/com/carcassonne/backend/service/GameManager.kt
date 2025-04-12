@@ -50,13 +50,10 @@ class GameManager {
     }
 
 
-    /**
-     * returns the new Game state
-     * @param gameId is needed to find the game
-     */
+
+
     fun placeTile(gameId: String, tile: Tile, player: String): GameState? {
         val game = games[gameId] ?: return null
-
         if (game.status != GamePhase.TILE_PLACEMENT) {
             throw IllegalStateException("Game is not in tile placement phase")
         }
@@ -64,14 +61,17 @@ class GameManager {
         if (currentPlayer != player) {
             throw IllegalStateException("Not player's turn")
         }
+        val currentTile = game.tileDeck.removeFirst() ?: throw NoSuchElementException("Tile not found")
 
         // check whether tile.position is valid -> see helper function below
-        if (!isValidPosition(game, tile, tile.position, tile.tileRotation)){
+        if (!isValidPosition(game, currentTile, currentTile.position, currentTile.tileRotation)){
             throw IllegalStateException("Tile is not in tile placement phase")
         }
-        game.placeTile(tile, tile.position!!)
 
-//        game.nextPlayer() move to
+        game.board.set(tile.position!!, currentTile)
+        game.status = GamePhase.MEEPLE_PLACEMENT
+
+        game.nextPlayer()
         return game
     }
 
