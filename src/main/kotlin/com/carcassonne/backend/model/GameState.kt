@@ -2,7 +2,7 @@ package com.carcassonne.backend.model
 
 data class GameState(
     val gameId: String,
-    val players: MutableList<Player> = mutableListOf(),
+    val players: MutableList<String> = mutableListOf(),
     val board: MutableMap<Position, Tile> = mutableMapOf(),
     var currentPlayerIndex: Int = 0,
     var status: GamePhase = GamePhase.WAITING,
@@ -10,13 +10,13 @@ data class GameState(
     val meeplesOnBoard: MutableList<Meeple> = mutableListOf() // Liste der platzierten Meeples
 ) {
     // Switch to the next player
-    fun nextPlayer(): Player {
+    fun nextPlayer(): String {
         currentPlayerIndex = (currentPlayerIndex + 1) % players.size
         return players[currentPlayerIndex]
     }
 
     // Get the current player
-    fun getCurrentPlayer(): Player = players[currentPlayerIndex]
+    fun getCurrentPlayer(): String = players[currentPlayerIndex]
 
     // Start the game (change status to IN_PROGRESS)
     fun startGame() {
@@ -33,7 +33,7 @@ data class GameState(
     }
 
     // Add a player to the game
-    fun addPlayer(player: Player) {
+    fun addPlayer(player: String) {
         if (status == GamePhase.WAITING && players.size < 4) {
             players.add(player)
         } else {
@@ -60,7 +60,7 @@ data class GameState(
     }
 
     // Calculate score for a player (example)
-    fun calculateScore(player: Player): Int {
+    fun calculateScore(player: String): Int {
         // Implement scoring logic here !!!
         return 0
     }
