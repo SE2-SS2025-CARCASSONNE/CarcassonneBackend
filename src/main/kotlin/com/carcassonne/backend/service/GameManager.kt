@@ -195,7 +195,7 @@ class GameManager {
         }
 
         val currentPlayer = game.getCurrentPlayer()
-        if (currentPlayer.id != playerId) {
+        if (currentPlayer != playerId) {
             throw IllegalStateException("Not player's turn")
         }
 
