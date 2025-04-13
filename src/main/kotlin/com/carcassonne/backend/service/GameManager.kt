@@ -54,14 +54,12 @@ class GameManager {
      * returns the new Game state
      * @param gameId is needed to find the game
      */
-    //Parameter input Change Datatype Player to String
     fun placeTile(gameId: String, tile: Tile, player: Player): GameState? {
         val game = games[gameId] ?: return null
         if (game.status != GamePhase.TILE_PLACEMENT) {
             throw IllegalStateException("Game is not in tile placement phase")
         }
         val currentPlayer = game.getCurrentPlayer()
-        // currentPlayer.id != player.id (Datatype Player to String
         if (currentPlayer.id != player.id) {
             throw IllegalStateException("Not player's turn")
         }
@@ -90,7 +88,6 @@ class GameManager {
         }
         //Überprüfung Spieler, der gerade an der Reihe ist, muss auch der übergebene Spieler sein
         val currentPlayer = game.getCurrentPlayer()
-        //currentPlayer.id != player.id (Datatype Change Player to String
         if (currentPlayer.id != player.id) {
             throw IllegalStateException("Not player's turn")
         }
@@ -103,7 +100,7 @@ class GameManager {
         {
 
         }
-       // player.score += addPoints;
+        player.score += addPoints;
         game.status= GamePhase.TILE_PLACEMENT
         game.nextPlayer()
         return game
@@ -198,7 +195,6 @@ class GameManager {
         }
 
         val currentPlayer = game.getCurrentPlayer()
-        //currentPlayer.id != playerId (Datatype Player -> String) ?
         if (currentPlayer.id != playerId) {
             throw IllegalStateException("Not player's turn")
         }
@@ -231,7 +227,6 @@ class GameManager {
     }
 
     fun createGameWithHost(gameId: String, hostName: Player): GameState {
-        //Datatype Player to String ?
         val game = GameState(gameId)
         game.players.add(hostName)
         games[gameId] = game

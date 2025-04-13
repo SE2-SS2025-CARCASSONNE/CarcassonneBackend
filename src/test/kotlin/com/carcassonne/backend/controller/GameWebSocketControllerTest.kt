@@ -2,7 +2,6 @@ package com.carcassonne.backend.controller
 
 import com.carcassonne.backend.model.GameMessage
 import com.carcassonne.backend.model.GameState
-import com.carcassonne.backend.model.Player
 import com.carcassonne.backend.repository.GameRepository
 import com.carcassonne.backend.service.GameManager
 import org.junit.jupiter.api.Test
@@ -21,8 +20,8 @@ class GameWebSocketControllerTest {
     fun `handle join_game sends player_joined message`() {
         // Arrange
         val gameId = "testgame"
-        val player= Player("Player",0,8,0)
-        val playersList = mutableListOf<Player>()
+        val player = "player"
+        val playersList = mutableListOf<String>()
 
         // Create a mock GameState
         val mockGameState = mock(GameState::class.java)
