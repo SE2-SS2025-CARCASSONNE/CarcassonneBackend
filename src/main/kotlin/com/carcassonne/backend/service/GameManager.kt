@@ -144,6 +144,46 @@ class GameManager {
         return true
     }
 
+    fun placeMeeple(gameId: String, playerId: String, meeple: Meeple, position: MeeplePosition): GameState? {
+        val game = games[gameId] ?: return null
+
+        // Validierung des Spielstatus
+        if (game.status != GamePhase.MEEPLE_PLACEMENT) {
+            throw IllegalStateException("Game is not in meeple placement phase")
+        }
+
+        val currentPlayer = game.getCurrentPlayer()
+        if (currentPlayer != playerId) {
+            throw IllegalStateException("Not player's turn")
+        }
+
+        // Validierung der Position
+        val tile = game.board.entries.find { it.value.id == meeple.tileId }?.value
+            ?: throw IllegalStateException("Tile not found on the board")
+        if (!isValidMeeplePosition(tile, position)) {
+            throw IllegalStateException("Invalid meeple position")
+        }
+
+        // Meeple-Platzierung
+        meeple.position = position
+        game.meeplesOnBoard.add(meeple)
+
+        // Nächster Spielstatus
+        game.status = GamePhase.TILE_PLACEMENT //TODO: Mike: Ist das richtig oder müssen wir auf SCORING?
+        game.nextPlayer()
+
+        return game
+    }
+
+    private fun isValidMeeplePosition(tile: Tile, position: MeeplePosition): Boolean {
+        // Beispiel-Validierungslogik (Platzierung auf dem Feld, Stadt, Straße etc.)
+        return when (position) {
+            MeeplePosition.NORTH -> tile.terrainNorth == TerrainType.CITY || tile.terrainNorth == TerrainType.ROAD
+            MeeplePosition.SOUTH -> tile.terrainSouth == TerrainType.FIELD || tile.terrainSouth == TerrainType.MONASTERY
+            else -> true // Weitere Validierungen
+        }
+    }
+
     fun createGameWithHost(gameId: String, hostName: String): GameState {
         val game = GameState(gameId)
         game.players.add(hostName)
