@@ -52,10 +52,19 @@ class GameManager {
 
     /**
      * returns the new Game state
-     * @param gameId is needed to find the game
+     * gameId is needed to find the game
+     * uses the coordinates of the tile's position
+     *
+     * TODO: adjust request message from frontend to send the desired position's coordinates
+     *   - either as tile's position attribute
+     *   - or as additional attribute of the GameMessage instance
      */
-    fun placeTile(gameId: String, tile: Tile, player: String): GameState? {
+    fun placeTile(gameId: String, tile: Tile, player: String, position: Pair<Int?, Int?>): GameState? {
         val game = games[gameId] ?: return null
+        if (position.first == null || position.second == null) {
+            throw IllegalArgumentException("Position can not be null")
+        }
+        val desiredPositionOnGameBoard = Position(position.first!!, position.second!!)
 
         if (game.status != GamePhase.TILE_PLACEMENT) {
             throw IllegalStateException("Game is not in tile placement phase")
@@ -66,12 +75,12 @@ class GameManager {
         }
 
         // check whether tile.position is valid -> see helper function below
-        if (!isValidPosition(game, tile, tile.position, tile.tileRotation)){
-            throw IllegalStateException("Tile is not in tile placement phase")
+        if (!isValidPosition(game, tile, desiredPositionOnGameBoard, tile.tileRotation)){
+            throw IllegalArgumentException("Position is not valid")
         }
-        game.placeTile(tile, tile.position!!)
+        game.placeTile(tile, desiredPositionOnGameBoard)
 
-//        game.nextPlayer() move to
+//      move game.nextPlayer() call to calculateScore method
         return game
     }
 
@@ -79,14 +88,12 @@ class GameManager {
      * Helper method to determine validity of position in the context of tile placement
      * returns true if tile can be placed at the desired position
      */
-    private fun isValidPosition(game: GameState, tile: Tile, position: Position?, tileRotation: TileRotation): Boolean {
-        if (position == null){
-            throw IllegalArgumentException("Position can not be null")
-        }
-        val leftNeighborPosition: Position = Position(position.x - 1, position.y)
-        val rightNeighborPosition: Position = Position(position.x + 1, position.y)
-        val topNeighborPosition: Position = Position(position.x, position.y + 1)
-        val bottomNeighborPosition: Position = Position(position.x, position.y - 1)
+    private fun isValidPosition(game: GameState, tile: Tile, position: Position, tileRotation: TileRotation): Boolean {
+
+        val leftNeighborPosition = Position(position.x - 1, position.y)
+        val rightNeighborPosition = Position(position.x + 1, position.y)
+        val topNeighborPosition = Position(position.x, position.y + 1)
+        val bottomNeighborPosition = Position(position.x, position.y - 1)
 
 
         val leftNeighbor: Tile? = game.board[leftNeighborPosition]
