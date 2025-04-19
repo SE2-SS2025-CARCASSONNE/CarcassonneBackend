@@ -5,6 +5,8 @@ import com.carcassonne.backend.service.GameManager
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -17,10 +19,9 @@ class GameRestController(
     @GetMapping("/{gameId}")
     fun getGame(
         @PathVariable gameId: String,
-        @RequestHeader(value = "Authorization", required = false) authHeader: String?
+        @AuthenticationPrincipal user: UserDetails //Inject authenticated user
     ): ResponseEntity<GameState> {
-        println(">>> [DEBUG] GET /api/game/$gameId")
-        println(">>> [DEBUG] Authorization Header: $authHeader")
+        println(">>> [DEBUG] GET /api/game/$gameId by ${user.username}")
 
         val game = gameManager.getOrCreateGame(gameId)
         return ResponseEntity.ok(game)
