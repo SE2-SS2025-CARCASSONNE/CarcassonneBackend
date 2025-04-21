@@ -49,7 +49,7 @@ class GameWebSocketController(
                 }
                 val position = Pair(x, y)
                 // call to placeTile method returns the updated game state
-                val game = gameManager.placeTile(msg.gameId, tile, msg.player, position)
+                val game = gameManager.placeTile(msg.gameId, tile, msg.player)
                 if (game != null) {
                     val payload = mapOf(
                         "type" to "board_update",
