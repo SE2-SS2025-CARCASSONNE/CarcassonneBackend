@@ -44,7 +44,8 @@ class GameManager {
         val game = games[gameId] ?: return null
         val tile = game.drawTile() // Use the drawTile method from GameState to get a tile
         if (tile != null) {
-            if (canPlaceTileAnywhere(game, tile)) return tile else println("No legal placement possible. Skipping tile")
+            if (!canPlaceTileAnywhere(game, tile)) println("No legal placement possible. Skipping tile")
+            return tile
         }
         return null // Return null if no tile is available
     }
@@ -96,7 +97,7 @@ class GameManager {
 
         // check whether tile.position is valid -> see helper function below
         if (!isValidPosition(game, tile, tile.position, tile.tileRotation)){
-            throw IllegalStateException("Position is invalid")
+            throw IllegalArgumentException("Position is invalid")
         }
         game.placeTile(tile, tile.position!!)
 
