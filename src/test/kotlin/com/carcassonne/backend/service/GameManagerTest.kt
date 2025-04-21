@@ -25,6 +25,43 @@ class GameManagerTest {
         val sameGame = gameManager.getOrCreateGame("test-game")
         assertSame(game, sameGame, "Should return the same instance for same gameId")
     }
+    @Test
+    fun `should generate tile deck with correct count and valid terrains`() {
+        val deck = gameManager.createShuffledTileDeck(seed = 99L)
+        val expectedCount = TerrainType.values().size * 5
+        assertEquals(expectedCount, deck.size, "Expected $expectedCount tiles in deck")
+
+        deck.forEach { tile ->
+            assertTrue(tile.terrainNorth in TerrainType.values())
+            assertTrue(tile.terrainEast in TerrainType.values())
+            assertTrue(tile.terrainSouth in TerrainType.values())
+            assertTrue(tile.terrainWest in TerrainType.values())
+        }
+    }
+
+    @Test
+    fun `tile deck should be consistent with same seed`() {
+        val seed = 42L
+        val deck1 = gameManager.createShuffledTileDeck(seed)
+        val deck2 = gameManager.createShuffledTileDeck(seed)
+        assertEquals(deck1, deck2, "Decks with same seed should be identical")
+    }
+
+    @Test
+    fun `tile deck should differ with different seeds`() {
+        val deck1 = gameManager.createShuffledTileDeck(seed = 1L)
+        val deck2 = gameManager.createShuffledTileDeck(seed = 2L)
+        assertNotEquals(deck1, deck2, "Decks with different seeds should be different")
+    }
+
+    @Test
+    fun `tile IDs should be unique in the generated deck`() {
+        val deck = gameManager.createShuffledTileDeck(seed = 123L)
+        val ids = deck.map { it.id }
+        val uniqueIds = ids.toSet()
+        assertEquals(deck.size, uniqueIds.size, "All tile IDs should be unique")
+    }
+
 
     @Test
     fun `drawTileForPlayer should return tile if deck has tiles`() {
