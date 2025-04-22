@@ -41,7 +41,20 @@ class GameWebSocketController(
             }
 
             "place_tile" -> {
-                val game = gameManager.placeTile(msg.gameId, msg.tile!!, msg.player)
+                val tile = msg.tile
+                val x = tile?.position?.x
+                val y = tile?.position?.y
+                if (tile == null || x == null || y == null) {
+                    val error = mapOf(
+                        "type" to "error",
+                        "message" to "Invalid tile placement data"
+                    )
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
+                    return
+                }
+                val position = Pair(x, y)
+                // call to placeTile method returns the updated game state
+                val game = gameManager.placeTile(msg.gameId, tile, msg.player)
                 if (game != null) {
                     val payload = mapOf(
                         "type" to "board_update",

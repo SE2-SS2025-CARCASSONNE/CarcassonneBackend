@@ -43,7 +43,6 @@ class GameWebSocketControllerTest {
         // Act
         controller.handle(message)
 
-
         // Assert
         //assertEquals("Player",mockGameState.findPlayerById(player)?.id) TODO Testfall schreiben
 

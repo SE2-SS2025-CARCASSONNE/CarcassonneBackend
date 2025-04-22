@@ -44,7 +44,6 @@ data class GameState(
 
     // Add a player to the game
     fun addPlayer(player: String) {
-
         if (status == GamePhase.WAITING && players.size < 4) {
             val playerr = Player(player,0,8,0)
             players.add(playerr)
@@ -59,6 +58,7 @@ data class GameState(
             throw IllegalStateException("Game is not in tile placement phase")
         }
         board[position] = tile
+        status = GamePhase.MEEPLE_PLACEMENT
     }
 
     // Shuffle and add tiles to the deck (for a random start)
@@ -72,7 +72,7 @@ data class GameState(
     }
 
     // Calculate score for a player (example)
-    fun calculateScore(player: Player): Int {
+    fun calculateScore(player: String): Int {
         // Implement scoring logic here !!!
         return 0
     }

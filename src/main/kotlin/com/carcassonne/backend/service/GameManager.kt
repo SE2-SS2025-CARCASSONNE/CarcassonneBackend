@@ -44,9 +44,35 @@ class GameManager {
         val game = games[gameId] ?: return null
         val tile = game.drawTile() // Use the drawTile method from GameState to get a tile
         if (tile != null) {
+            if (!canPlaceTileAnywhere(game, tile)) println("No legal placement possible. Skipping tile")
             return tile
         }
         return null // Return null if no tile is available
+    }
+
+    fun canPlaceTileAnywhere(game: GameState, tile: Tile): Boolean {
+        val terrainMap = tile.getRotatedTerrains()
+
+        // Try placing the tile at every empty spot next to existing tiles
+        val potentialSpots = game.board.keys.flatMap { pos ->
+            listOf(
+                Position(pos.x + 1, pos.y),
+                Position(pos.x - 1, pos.y),
+                Position(pos.x, pos.y + 1),
+                Position(pos.x, pos.y - 1)
+            )
+        }.filter { it !in game.board.keys }.toSet()
+
+        for (spot in potentialSpots) {
+            for (rotation in TileRotation.values()) {
+                val rotatedTile = tile.copy(tileRotation = rotation, position = spot)
+                if (isValidPosition(game, rotatedTile, spot, rotation)) {
+                    return true
+                }
+            }
+        }
+
+        return false
     }
 
 
@@ -56,7 +82,8 @@ class GameManager {
      */
     //Parameter input Change Datatype Player to String
     fun placeTile(gameId: String, tile: Tile, playerId: String): GameState? {
-        val game = games[gameId] ?: return null
+        val game = games[gameId] ?: throw IllegalArgumentException("Game $gameId is not registered")
+
         if (game.status != GamePhase.TILE_PLACEMENT) {
             throw IllegalStateException("Game is not in tile placement phase")
         }
@@ -65,53 +92,37 @@ class GameManager {
         if (currentPlayerId != playerId) {
             throw IllegalStateException("Not player's turn")
         }
-        val currentTile = game.tileDeck.removeFirst() ?: throw NoSuchElementException("Tile not found")
+
+        if (tile.position == null){
+            throw IllegalArgumentException("Tile position required")
+        }
 
         // check whether tile.position is valid -> see helper function below
-        if (!isValidPosition(game, currentTile, currentTile.position, currentTile.tileRotation)){
-            throw IllegalStateException("Tile is not in tile placement phase")
+        if (!isValidPosition(game, tile, tile.position, tile.tileRotation)){
+            throw IllegalArgumentException("Position is invalid")
         }
         game.placeTile(tile, tile.position!!)
 
-        game.board.set(tile.position!!, currentTile)
-        game.status = GamePhase.MEEPLE_PLACEMENT
+        if (tile.hasMonastery) {
+            if (isMonasteryComplete(game.board, tile.position!!)) println("Monastery is completed at ${tile.position}")
+        }
 
-        game.nextPlayer()
+        if (tile.isRoad()) {
+            if (isRoadCompleted(game.board, tile.position!!)) {
+                println("Road is completed at ${tile.position}")
+                // Score road points here
+            }
+        }
+
+        if (tile.isCity()) {
+            if (isCityCompleted(game, tile)) {
+                println("City is completed at ${tile.position}")
+            }
+        }
+
+        //game.nextPlayer() move to endTurn logic
         return game
-
     }
-    fun calculatePoints(gameId: String, playerID: String): GameState?
-    {
-        // Überprüfung null wert Spiel, falsche Game-Phase
-
-        val game = games[gameId] ?: return null
-        if (game.status != GamePhase.SCORING) {
-            throw IllegalStateException("Game is not in Scoring Phase")
-        }
-        //Überprüfung Spieler, der gerade an der Reihe ist, muss auch der übergebene Spieler sein
-        val currentPlayerID = game.getCurrentPlayer()
-        //currentPlayer.id != player.id (Datatype Change Player to String
-        if (currentPlayerID != playerID) {
-            throw IllegalStateException("Not player's turn")
-        }
-        val addPoints = 0;
-        if(isCityFinished())
-        {
-
-        }
-        if(isStreetFinished())
-        {
-
-        }
-       // player.score += addPoints;
-        game.status= GamePhase.TILE_PLACEMENT
-        game.nextPlayer()
-        return game
-
-    }
-
-
-
 
     /**
      * Helper method to determine validity of position in the context of tile placement
@@ -121,73 +132,160 @@ class GameManager {
         if (position == null){
             throw IllegalArgumentException("Position can not be null")
         }
-        val leftNeighborPosition: Position = Position(position.x - 1, position.y)
-        val rightNeighborPosition: Position = Position(position.x + 1, position.y)
-        val topNeighborPosition: Position = Position(position.x, position.y + 1)
-        val bottomNeighborPosition: Position = Position(position.x, position.y - 1)
+        val rotatedTile = tile.copy(tileRotation = tileRotation)
+        val terrains = rotatedTile.getRotatedTerrains()
+
+        val neighbors = mapOf(
+            Position(position.x, position.y + 1) to "N",
+            Position(position.x + 1, position.y) to "E",
+            Position(position.x, position.y - 1) to "S",
+            Position(position.x - 1, position.y) to "W"
+        )
 
 
-        val leftNeighbor: Tile? = game.board[leftNeighborPosition]
-        val rightNeighbor: Tile? = game.board[rightNeighborPosition]
-        val topNeighbor: Tile? = game.board[topNeighborPosition]
-        val bottomNeighbor: Tile? = game.board[bottomNeighborPosition]
-        val neighbors = mutableListOf(leftNeighbor, rightNeighbor, topNeighbor, bottomNeighbor)
+        var hasAdjacent = false
 
-        if(isListOfNulls(neighbors)) {
-            return false
-        }
+        for ((neighborPos, direction) in neighbors) {
+            val neighbor = game.board[neighborPos] ?: continue
+            hasAdjacent = true
 
-        for(placedTile in game.board.values) {
-            if (position == placedTile.position) {
-                return false
+            val neighborTerrains = neighbor.getRotatedTerrains()
+
+            when (direction) {
+                "N" -> if (terrains["N"] != neighborTerrains["S"]) return false
+                "E" -> if (terrains["E"] != neighborTerrains["W"]) return false
+                "S" -> if (terrains["S"] != neighborTerrains["N"]) return false
+                "W" -> if (terrains["W"] != neighborTerrains["E"]) return false
             }
         }
-        for (neighbor in neighbors){
-            if (neighbor == null) {
-                continue
-            } else {
-                if (neighbor.position == leftNeighborPosition && neighbor.terrainEast != tile.terrainWest) {
+
+        // Disallow isolated tiles except center
+        return hasAdjacent || position == Position(0, 0)
+    }
+
+    private fun isMonasteryComplete(board: Map<Position, Tile>, position: Position): Boolean {
+        val adjacentOffsets = listOf(
+            Pair(-1, -1), Pair(0, -1), Pair(1, -1),
+            Pair(-1, 0),              Pair(1, 0),
+            Pair(-1, 1),  Pair(0, 1), Pair(1, 1)
+        )
+
+        return adjacentOffsets.all { (dx, dy) ->
+            val adjacentPos = Position(position.x + dx, position.y + dy)
+            board.containsKey(adjacentPos)
+        }
+    }
+
+    private fun isRoadCompleted(board: Map<Position, Tile>, position: Position): Boolean {
+        val tile = board[position] ?: return false
+        val terrains = tile.getRotatedTerrains()
+
+        return listOf("N", "E", "S", "W").all { dir ->
+            if (terrains[dir] == TerrainType.ROAD) {
+                val neighborPos = getNeighborPosition(position, dir)
+                val neighbor = board[neighborPos]
+                val neighborTerrains = neighbor?.getRotatedTerrains()
+                val opposite = getOppositeDirection(dir)
+                if (neighborTerrains?.get(opposite) != TerrainType.ROAD) {
                     return false
                 }
-                if (neighbor.position == rightNeighborPosition && neighbor.terrainWest != tile.terrainEast) {
-                    return false
-                }
-                if (neighbor.position == topNeighborPosition && neighbor.terrainSouth != tile.terrainNorth) {
-                    return false
-                }
-                if (neighbor.position == bottomNeighborPosition && neighbor.terrainNorth != tile.terrainSouth) {
-                    return false
+            }
+            true
+        }
+    }
+
+    private fun getNeighborPosition(position: Position, direction: String): Position = when (direction) {
+        "N" -> Position(position.x, position.y + 1)
+        "E" -> Position(position.x + 1, position.y)
+        "S" -> Position(position.x, position.y - 1)
+        "W" -> Position(position.x - 1, position.y)
+        else -> position
+    }
+
+    private fun getOppositeDirection(direction: String): String = when (direction) {
+        "N" -> "S"
+        "S" -> "N"
+        "E" -> "W"
+        "W" -> "E"
+        else -> direction
+    }
+
+    fun isCityCompleted(game: GameState, placedTile: Tile): Boolean {
+        val visited = mutableSetOf<Position>()
+        val cityTiles = mutableSetOf<Position>()
+        var openEdges = 0
+
+        val queue = ArrayDeque<Pair<Position, String>>() // Position + direction that led here
+
+        // Start from the tile that was placed
+        queue.add(Position(placedTile.position!!.x, placedTile.position.y) to "ALL")
+
+        while (queue.isNotEmpty()) {
+            val (pos, fromDirection) = queue.removeFirst()
+            if (!visited.add(pos)) continue
+
+            val currentTile = game.board[pos] ?: continue
+            val terrains = currentTile.getRotatedTerrains()
+
+            cityTiles.add(pos)
+
+            val neighborOffsets = mapOf(
+                "N" to Position(pos.x, pos.y + 1),
+                "E" to Position(pos.x + 1, pos.y),
+                "S" to Position(pos.x, pos.y - 1),
+                "W" to Position(pos.x - 1, pos.y)
+            )
+
+            for ((dir, neighborPos) in neighborOffsets) {
+                val opposite = when (dir) {
+                    "N" -> "S"; "S" -> "N"
+                    "E" -> "W"; "W" -> "E"
+                    else -> "ALL"
                 }
 
+                val terrain = terrains[dir]
+                if (terrain != TerrainType.CITY) continue
+
+                val neighbor = game.board[neighborPos]
+                if (neighbor == null) {
+                    openEdges++
+                } else {
+                    val neighborTerrains = neighbor.getRotatedTerrains()
+                    if (neighborTerrains[opposite] == TerrainType.CITY) {
+                        queue.add(neighborPos to dir)
+                    } else {
+                        openEdges++ // Adjacent terrain does not match
+                    }
+                }
             }
         }
-        // only return true if more than 0 neighbors exist &&
-        // leftNeighbor.terrainEast == tile.terrainWest &&
-        // rightNeighbor.terrainWest == tile.terrainEast &&
-        // topNeighbor.terrainSouth == tile.terrainNorth &&
-        // bottomNeighbor.terrainNorth == tile.terrainSouth
-        return true
-    }
-    private fun isCityFinished(): Boolean{
-        return false;
-    }
 
-    private fun isStreetFinished(): Boolean{
-        return false;
-    }
+        if (openEdges == 0) {
+            val involvedMeeples = game.meeplesOnBoard.filter { it.position == MeeplePosition.CENTER && cityTiles.contains(getTilePosition(game, it.tileId)) }
 
-    /**
-     * Helper function to sort out game board positions without neighbors
-     * returns true if tile list contains only null values
-     */
-    private fun isListOfNulls(tiles: MutableList<Tile?>): Boolean {
-        for (tile in tiles) {
-            if (tile != null) {
-                return false
+            val playerMeepleCount = involvedMeeples.groupingBy { it.playerId }.eachCount()
+            val maxMeeples = playerMeepleCount.maxByOrNull { it.value }?.value ?: 0
+            val winners = playerMeepleCount.filterValues { it == maxMeeples }.keys
+
+            val pointsPerTile = 2
+            val points = cityTiles.size * pointsPerTile
+
+            // Update scores and remove meeples
+            for (winner in winners) {
+                println("Awarding $points points to $winner")
+                // Implement score tracking if not already available
             }
+
+            game.meeplesOnBoard.removeAll(involvedMeeples)
+            return true
         }
-        return true
+        return false
     }
+
+    private fun getTilePosition(game: GameState, tileId: String?): Position? {
+        return game.board.entries.find { it.value.id == tileId }?.key
+    }
+
 
     fun placeMeeple(gameId: String, playerId: String, meeple: Meeple, position: MeeplePosition): GameState? {
         val game = games[gameId] ?: return null
@@ -198,7 +296,6 @@ class GameManager {
         }
 
         val currentPlayer = game.getCurrentPlayer()
-        //currentPlayer.id != playerId (Datatype Player -> String) ?
         if (currentPlayer != playerId) {
             throw IllegalStateException("Not player's turn")
         }

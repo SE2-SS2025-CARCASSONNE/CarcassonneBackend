@@ -42,12 +42,12 @@ class AuthController(
 
             ResponseEntity.ok(mapOf("token" to token)) //Returns HTTP 200 with JWT mapped to "token" key in response body
 
-        } catch (e: BadCredentialsException) { //Handles invalid credentials (incorrect username or password)
+        } catch (_: BadCredentialsException) { //Handles invalid credentials (incorrect username or password)
             ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(mapOf("message" to "Invalid username or password. Please try again."))
-        } catch (e: Exception) { //Handles all other unexpected errors
+        } catch (_: Exception) { //Handles all other unexpected errors
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(mapOf("message" to "Something went wrong on our end. Please try again later."))
+                .body(mapOf("message" to "Something went wrong. Please try again later."))
         }
     }
 
@@ -56,11 +56,11 @@ class AuthController(
     fun register(@RequestBody registerRequest: RegisterRequest): ResponseEntity<Map<String, String>> {
         if (registerRequest.username.isBlank() || registerRequest.password.isBlank()) { //Check if username or password field is blank, return HTTP 400 if yes
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(mapOf("message" to "Please enter your username and password."))
+                .body(mapOf("message" to "Please enter a username and password."))
         }
         if (userService.findUserByUsername(registerRequest.username) != null) { //Check if username already exists, return HTTP 400 if yes
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(mapOf("message" to "Username already exists. Please try again."))
+                .body(mapOf("message" to "Username is not available. Please try again."))
         }
 
         return try {
@@ -68,12 +68,12 @@ class AuthController(
             val newUser = User(username = registerRequest.username, password = hashedPw) //Creates new user with provided credentials
             userService.saveUser(newUser) //Save new user to DB
 
-            ResponseEntity.status(HttpStatus.CREATED)
+            ResponseEntity.status(HttpStatus.CREATED) //Not really needed, easier to handle directly in frontend
                 .body(mapOf("message" to "Account registered successfully. Please log in."))
 
-        } catch (e: Exception) { //Handles all other unexpected errors
+        } catch (_: Exception) { //Handles all other unexpected errors
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(mapOf("message" to "Something went wrong on our end. Please try again later."))
+                .body(mapOf("message" to "Something went wrong. Please try again later."))
         }
     }
 }
