@@ -10,13 +10,13 @@ data class GameState(
     val meeplesOnBoard: MutableList<Meeple> = mutableListOf() // Liste der platzierten Meeples
 ) {
     // Switch to the next player
-    fun nextPlayer(): Player {
+    fun nextPlayer(): String {
         currentPlayerIndex = (currentPlayerIndex + 1) % players.size
-        return players[currentPlayerIndex]
+        return players[currentPlayerIndex].id
     }
 
     // Get the current player
-    fun getCurrentPlayer(): Player = players[currentPlayerIndex]
+    fun getCurrentPlayer(): String = players[currentPlayerIndex].id
 
     // Start the game (change status to IN_PROGRESS)
     fun startGame() {
@@ -27,15 +27,27 @@ data class GameState(
         }
     }
 
+    fun findPlayerById(playerID: String): Player?{
+        for(player in players)
+        {
+            if(player.id == playerID)
+                return player;
+
+        }
+        return null;
+    }
+
     // Finish the game (change status to FINISHED)
     fun finishGame() {
         status = GamePhase.FINISHED
     }
 
     // Add a player to the game
-    fun addPlayer(player: Player) {
+    fun addPlayer(player: String) {
+
         if (status == GamePhase.WAITING && players.size < 4) {
-            players.add(player)
+            val playerr = Player(player,0,8,0)
+            players.add(playerr)
         } else {
             throw IllegalStateException("Game already started or max players reached")
         }

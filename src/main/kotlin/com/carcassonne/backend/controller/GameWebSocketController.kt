@@ -21,8 +21,13 @@ class GameWebSocketController(
         when (msg.type) {
             "join_game" -> {
                 val game = gameManager.getOrCreateGame(msg.gameId)
-                if (!game.players.contains(msg.player)) {
-                    game.players.add(msg.player)
+
+                // Suche nach Player mit ID : "Player"
+                val playerr = game.findPlayerById(msg.player);
+                //!game.players.contains(msg.player old code
+                if (playerr == null) {
+                    //game.players.add(msg.player)
+                    game.addPlayer(msg.player);
                 }
 
                 val payload = mapOf(

@@ -20,7 +20,7 @@ class GameController(
     private val gameManager: GameManager
 ) {
 
-    data class CreateGameRequest(val playerCount: Int, val hostName: Player) //Datatype Player -> String
+    data class CreateGameRequest(val playerCount: Int, val hostName: String) //Datatype Player -> String
     data class CreateGameResponse(val gameId: String)
 
     @Operation(summary = "Ping the server")
