@@ -20,26 +20,35 @@ class JwtHandshakeInterceptor(
         wsHandler: WebSocketHandler,
         attributes: MutableMap<String, Any>
     ): Boolean {
-        val authHeader = request.headers.getFirst("Authorization") //Read auth header from HTTP request
+        println(">>> [Handshake] Incoming handshake request...")
+        println(">>> [Handshake] Headers: ${request.headers}")
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) { //Check if authHeader exists and Bearer scheme is used
-            val token = authHeader.substring(7) //Extract JWT by removing "Bearer " prefix
+        val authHeader = request.headers.getFirst("Authorization") //Read auth header from HTTP request
+        println(">>> [Handshake] Authorization header: $authHeader") // NEW LINE
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            val token = authHeader.substring(7)
 
             try {
                 val username = jwtUtil.extractUsername(token)
-                val userDetails = userDetailsService.loadUserByUsername(username) //Load user details from database
+                println(">>> [Handshake] Extracted username from token: $username")
+                val userDetails = userDetailsService.loadUserByUsername(username)
 
-                return if (jwtUtil.tokenValid(token, userDetails)) { //Check if JWT is valid for this user
-                    attributes["username"] = username //Associate user with WS connection (for use in WS controllers)
+                return if (jwtUtil.tokenValid(token, userDetails)) {
+                    attributes["username"] = username
+                    println(">>> [Handshake] Token is valid, user connected as $username")
                     true
                 } else {
+                    println(">>> [Handshake] Token is INVALID")
                     false
                 }
-
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                println(">>> [Handshake] Exception during token validation: ${e.message}")
                 return false
             }
         }
+
+        println(">>> [Handshake] Authorization header missing or malformed")
         return false
     }
 
