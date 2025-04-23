@@ -2,7 +2,7 @@ package com.carcassonne.backend.model
 
 data class GameState(
     val gameId: String,
-    val players: MutableList<String> = mutableListOf(),
+    val players: MutableList<Player> = mutableListOf(),
     val board: MutableMap<Position, Tile> = mutableMapOf(),
     var currentPlayerIndex: Int = 0,
     var status: GamePhase = GamePhase.WAITING,
@@ -12,11 +12,11 @@ data class GameState(
     // Switch to the next player
     fun nextPlayer(): String {
         currentPlayerIndex = (currentPlayerIndex + 1) % players.size
-        return players[currentPlayerIndex]
+        return players[currentPlayerIndex].id
     }
 
     // Get the current player
-    fun getCurrentPlayer(): String = players[currentPlayerIndex]
+    fun getCurrentPlayer(): String = players[currentPlayerIndex].id
 
     // Start the game (change status to IN_PROGRESS)
     fun startGame() {
@@ -27,6 +27,16 @@ data class GameState(
         }
     }
 
+    fun findPlayerById(playerID: String): Player?{
+        for(player in players)
+        {
+            if(player.id == playerID)
+                return player;
+
+        }
+        return null;
+    }
+
     // Finish the game (change status to FINISHED)
     fun finishGame() {
         status = GamePhase.FINISHED
@@ -35,7 +45,8 @@ data class GameState(
     // Add a player to the game
     fun addPlayer(player: String) {
         if (status == GamePhase.WAITING && players.size < 4) {
-            players.add(player)
+            val playerr = Player(player,0,8,0)
+            players.add(playerr)
         } else {
             throw IllegalStateException("Game already started or max players reached")
         }
