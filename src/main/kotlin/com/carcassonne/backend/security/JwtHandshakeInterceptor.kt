@@ -1,18 +1,15 @@
 package com.carcassonne.backend.security
 
-import org.springframework.http.HttpStatus
 import org.springframework.http.server.ServerHttpRequest
 import org.springframework.http.server.ServerHttpResponse
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.WebSocketHandler
 import org.springframework.web.socket.server.HandshakeInterceptor
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.core.userdetails.UserDetailsService
 
 @Component
 //Custom interceptor that runs once during initial WebSocket handshake (like JwtFilter but for WebSockets)
-class CustomHandshakeInterceptor(
+class JwtHandshakeInterceptor(
     private val jwtUtil: JwtUtil,
     private val userDetailsService: UserDetailsService
 ) : HandshakeInterceptor {
@@ -32,21 +29,17 @@ class CustomHandshakeInterceptor(
                 val username = jwtUtil.extractUsername(token)
                 val userDetails = userDetailsService.loadUserByUsername(username) //Load user details from database
 
-                if (jwtUtil.tokenValid(token, userDetails)) { //Check if JWT is valid for this user
-                    val authToken = UsernamePasswordAuthenticationToken( //Create Spring Security auth token
-                        userDetails, null, userDetails.authorities)
-
-                    SecurityContextHolder.getContext().authentication = authToken //Store authToken in security context
-                    return true
+                return if (jwtUtil.tokenValid(token, userDetails)) { //Check if JWT is valid for this user
+                    attributes["username"] = username //Associate user with WS connection (for use in WS controllers)
+                    true
+                } else {
+                    false
                 }
 
             } catch (_: Exception) {
-                //Handle error if token invalid or expired
-                response.setStatusCode(HttpStatus.UNAUTHORIZED)
+                return false
             }
         }
-        //Reject connection if token is invalid or missing
-        response.setStatusCode(HttpStatus.UNAUTHORIZED)
         return false
     }
 
