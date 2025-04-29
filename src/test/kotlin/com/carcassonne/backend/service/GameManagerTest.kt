@@ -92,7 +92,9 @@ class GameManagerTest {
     fun `placeTile should place tile if first tile`() {
         val gameId = "game-1"
         val game = gameManager.getOrCreateGame(gameId)
-        game.players.addAll(listOf("Player1", "Player2"))
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
+
         game.startGame()
 
         val tile = Tile(
@@ -114,7 +116,8 @@ class GameManagerTest {
     fun `placeTile should place tile if valid`() {
         val gameId = "game-1"
         val game = gameManager.getOrCreateGame(gameId)
-        game.players.addAll(listOf("Player1", "Player2"))
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
         game.startGame()
 
         val tile1 = Tile(
@@ -153,7 +156,8 @@ class GameManagerTest {
     fun `should reject tile placement if not current player`() {
         val gameId = "wrong-turn"
         val game = gameManager.getOrCreateGame(gameId)
-        game.players.addAll(listOf("Player1", "Player2"))
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
         game.startGame()
 
         val tile = Tile(
@@ -173,7 +177,8 @@ class GameManagerTest {
     fun `should reject tile placement if not in tile placement phase`() {
         val gameId = "wrong-phase"
         val game = gameManager.getOrCreateGame(gameId)
-        game.players.addAll(listOf("Player1", "Player2"))
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
         game.status = GamePhase.WAITING
 
         val tile = Tile(
@@ -193,7 +198,8 @@ class GameManagerTest {
     fun `should reject tile placement if invalid position`() {
         val gameId = "invalid-position"
         val game = gameManager.getOrCreateGame(gameId)
-        game.players.addAll(listOf("Player1", "Player2"))
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
         game.startGame()
 
         val tile = Tile(
