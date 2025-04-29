@@ -295,9 +295,18 @@ class GameManager {
             throw IllegalStateException("Game is not in meeple placement phase")
         }
 
-        val currentPlayer = game.getCurrentPlayer()
-        if (currentPlayer != playerId) {
+        val currentPlayerId = game.getCurrentPlayer()
+        val currentPlayer = game.players.find { it.id == currentPlayerId }
+            ?: throw IllegalStateException("Current player not found")
+
+        // Validierung des Spielers
+        if (currentPlayerId != playerId) {
             throw IllegalStateException("Not player's turn")
+        }
+
+        // Überprüfen, ob der Spieler noch Meeples hat
+        if (currentPlayer.remainingMeeple <= 0) {
+            throw IllegalStateException("No Meeples remaining for placement!") // Rückmeldung an den Spieler auf Englisch
         }
 
         // Validierung der Position
@@ -307,29 +316,97 @@ class GameManager {
             throw IllegalStateException("Invalid meeple position")
         }
 
+        // Prüfung auf bereits vorhandene Meeples im verbundenen Bereich
+        val connectedTiles = getConnectedFeatureTiles(game, tile, position)
+        val featureType = tile.getTerrainType(position.name)
+            ?: throw IllegalStateException("Invalid feature type")
+        if (isMeeplePresentOnFeature(game, connectedTiles, featureType)) {
+            throw IllegalStateException("Another Meeple is already present on this feature!")
+        }
+
         // Meeple-Platzierung
         meeple.position = position
         game.meeplesOnBoard.add(meeple)
 
         // Nächster Spielstatus
-        game.status = GamePhase.TILE_PLACEMENT //TODO: Mike: Ist das richtig oder müssen wir auf SCORING?
+        game.status = GamePhase.SCORING //Mike: Ist das richtig oder müssen wir auf SCORING? --> Scoring lt. Bespr. mit Jakob/Felix 27.04.2025
         game.nextPlayer()
 
         return game
     }
 
+
     private fun isValidMeeplePosition(tile: Tile, position: MeeplePosition): Boolean {
         // Beispiel-Validierungslogik (Platzierung auf dem Feld, Stadt, Straße etc.)
+        // TODO: Mike: Wie ist Tile-Rotation, was liegt im Norden auf dem Spielbrett
+        // davor feststellen und mitgeben in diese Funktion zB wenn Monastery, dann nur im Center, wenn Meeple im Center, dann Mönch
         return when (position) {
             MeeplePosition.NORTH -> tile.terrainNorth == TerrainType.CITY || tile.terrainNorth == TerrainType.ROAD
-            MeeplePosition.SOUTH -> tile.terrainSouth == TerrainType.FIELD || tile.terrainSouth == TerrainType.MONASTERY
+            MeeplePosition.SOUTH -> tile.terrainSouth == TerrainType.FIELD || tile.terrainSouth == TerrainType.MONASTERY // Field brauchen wir ja nicht!
             else -> true // Weitere Validierungen
+        }
+    }
+
+    fun getConnectedFeatureTiles(game: GameState, startTile: Tile, startPosition: MeeplePosition): List<Position> {
+        val visited = mutableSetOf<Position>()
+        val featureTiles = mutableListOf<Position>()
+        val queue = ArrayDeque<Pair<Position, String>>() // Position + Ausgangsrichtung
+
+        val startTilePosition = Position(startTile.position!!.x, startTile.position.y)
+        queue.add(startTilePosition to startPosition.name) // Nutze die Richtung als String ("N", "E", etc.)
+
+        while (queue.isNotEmpty()) {
+            val (currentPos, fromDirection) = queue.removeFirst()
+            if (!visited.add(currentPos)) continue
+
+            val currentTile = game.board[currentPos] ?: continue
+            featureTiles.add(currentPos)
+
+            val rotatedTerrains = currentTile.getRotatedTerrains()
+
+            // Prüfe angrenzende Tiles basierend auf der Verbindung und Rotation
+            val neighborOffsets = mapOf(
+                "N" to Position(currentPos.x, currentPos.y + 1),
+                "E" to Position(currentPos.x + 1, currentPos.y),
+                "S" to Position(currentPos.x, currentPos.y - 1),
+                "W" to Position(currentPos.x - 1, currentPos.y)
+            )
+
+            for ((dir, neighborPos) in neighborOffsets) {
+                val neighborTile = game.board[neighborPos]
+                if (neighborTile == null) continue
+
+                val neighborTerrains = neighborTile.getRotatedTerrains()
+                val oppositeDir = when (dir) {
+                    "N" -> "S"
+                    "E" -> "W"
+                    "S" -> "N"
+                    "W" -> "E"
+                    else -> throw IllegalStateException("Invalid direction")
+                }
+
+                // Prüfe, ob die Verbindung zwischen den Tiles passt
+                if (rotatedTerrains[dir] == neighborTerrains[oppositeDir]) {
+                    queue.add(neighborPos to dir)
+                }
+            }
+        }
+
+        return featureTiles
+    }
+
+    fun isMeeplePresentOnFeature(game: GameState, featureTiles: List<Position>, featureType: TerrainType): Boolean {
+        return game.meeplesOnBoard.any { meeple ->
+            val meepleTilePosition = getTilePosition(game, meeple.tileId)
+            val direction = meeple.position?.name ?: throw IllegalStateException("Meeple position is null")
+            meepleTilePosition in featureTiles &&
+                    game.board[meepleTilePosition]?.getTerrainType(direction) == featureType
         }
     }
 
     fun createGameWithHost(gameId: String, hostName: String): GameState {
         // Datatype Player to String ?
-         val host = Player(hostName,0,8,0)
+        val host = Player(hostName,0,8,0)
         val game = GameState(gameId)
         game.players.add(host) //host übergabe
         games[gameId] = game

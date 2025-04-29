@@ -47,6 +47,12 @@ fun Tile.getRotatedTerrains(): Map<String, TerrainType> {
     }
 }
 
+fun Tile.getTerrainType(direction: String): TerrainType? {
+    // Nutze die bereits bestehende Rotationslogik
+    val rotatedTerrains = this.getRotatedTerrains()
+    return rotatedTerrains[direction] // Gibt den TerrainType für die angegebene Richtung zurück
+}
+
 enum class TerrainType {
     ROAD,
     CITY,
