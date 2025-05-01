@@ -75,6 +75,96 @@ class GameManager {
         return false
     }
 
+     /*
+     * fun calculatePoints(gameId: String): GameState?
+     * {
+     *      if(isMonasteryComplete)
+     *      {
+     *
+     *      }
+     * }
+     *
+     *private fun awardPoints(
+    game: GameState,
+    involvedMeeples: List<Meeple>,
+    basePoints: Int,
+    featureType: String
+) {
+    val playerCounts = involvedMeeples.groupBy { it.playerId }.mapValues { it.value.size }
+    val maxCount = playerCounts.maxOfOrNull { it.value } ?: 0
+    val winners = playerCounts.filter { it.value == maxCount }.keys
+
+    winners.forEach { playerId ->
+        val points = when (featureType) {
+            "CITY" -> basePoints * 2
+            "ROAD" -> basePoints
+            else -> 0
+        }
+        game.players.find { it.id == playerId }?.points += points
+     *
+     *
+     *
+     *
+      */
+
+    private fun awardPoints(
+        game: GameState,
+        involvedMeeples: MutableList<Meeple>, //MutableList für Konsistenz
+        basePoints: Int,  //Weniger Punkte , hilft bei Engame Logik zum Beispiel ...
+        featureType: String //Berechnung für Monestary , Road , City
+         ) {
+    // Überprüfung ob Meeples vorhanden sind und Punkte vergeben werden können
+    if (involvedMeeples.isEmpty()) {
+        println("Keine Meeples für $featureType-Scoring")
+        return
+    }
+
+    // Gruppierung mit Fehlerhandling (Keine Einträge mit Meeple == 0
+    val playerCounts = involvedMeeples
+        .groupBy { it.playerId }
+        .mapValues { (_, meeples) ->
+            meeples.also {
+                if (it.isEmpty()) println("Kritischer Fehler: Leere Meeple-Gruppe")
+            }.size
+        }
+
+    // Maximalwert mit Fallback
+    val maxCount = playerCounts.maxByOrNull { it.value }?.value ?: run {
+        println("Fehler: Keine gültigen Spieler für $featureType")
+        return
+    }
+
+    // Gewinner ermitteln
+    val winners = playerCounts.filter { it.value == maxCount }.keys
+
+    // Punkteberechnung mit enum für Klarheit
+    val pointsPerFeature = when (featureType) {
+        "CITY" -> basePoints * 2
+        "ROAD" -> basePoints
+        "MONASTERY" -> basePoints
+        else -> {
+            println("Ungültiger Feature-Typ: $featureType")
+            0
+        }
+    }
+
+    // Punkte verteilen mit Spieler-Check
+    winners.forEach { playerId ->
+        val player = game.players.find { it.id == playerId } ?: run {
+            println("Fehler: Spieler $playerId existiert nicht")
+            return@forEach
+        }
+
+        player.score += pointsPerFeature
+        println("Punkte vergeben: $pointsPerFeature an $playerId ($featureType)")
+    }
+
+    // Debug-Info
+    println(
+        """Gewinner für $featureType:
+           ${winners.joinToString { "$it (${playerCounts[it]} Meeples)" }}"""
+    )
+}
 
     /**
      * returns the new Game state
@@ -119,6 +209,7 @@ class GameManager {
                 println("City is completed at ${tile.position}")
             }
         }
+
 
         //game.nextPlayer() move to endTurn logic
         return game
