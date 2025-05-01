@@ -90,6 +90,33 @@ class GameWebSocketController(
                 println(">>> [Backend] Sending game_started to /topic/game/${msg.gameId} with $payload")
                 messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
             }
+            "end_game" -> {
+                val game = gameManager.getOrCreateGame(msg.gameId)
+
+                if (game.status != GamePhase.FINISHED) {
+                    println(">>> Game is not in FINISHED phase")
+                    return
+                }
+
+                val winnerId = gameManager.endGame(msg.gameId)
+
+                try {
+                    val dbGame = gameRepository.findByGameCode(msg.gameId)
+                    if (dbGame != null) {
+                        dbGame.winner = winnerId
+                        gameRepository.save(dbGame)
+                    }
+                } catch (e: Exception) {
+                    println(">>> Failed to update winner in DB: ${e.message}")
+                }
+                val players = game.players
+                val payload = mapOf(
+                    "type" to "game_over",
+                    "winner" to winnerId,
+                    "scores" to players.map { mapOf("player" to it.id, "score" to it.score) }
+                )
+                messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
+            }
         }
     }
 }

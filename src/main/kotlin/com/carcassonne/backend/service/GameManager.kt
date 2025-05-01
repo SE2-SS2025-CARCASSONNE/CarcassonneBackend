@@ -165,6 +165,19 @@ class GameManager {
            ${winners.joinToString { "$it (${playerCounts[it]} Meeples)" }}"""
     )
 }
+    fun endGame(gameId: String): String {
+        val game = games[gameId] ?: throw IllegalArgumentException("Game not found")
+
+        if (game.status != GamePhase.FINISHED) {
+            throw IllegalStateException("Game is not in FINISHED phase")
+        }
+
+        val winner = game.players.maxByOrNull { it.score }
+            ?: throw IllegalStateException("No players to determine winner")
+
+        println(">>> Winner is: ${winner.id} with ${winner.score} points")
+        return winner.id
+    }
 
     /**
      * returns the new Game state

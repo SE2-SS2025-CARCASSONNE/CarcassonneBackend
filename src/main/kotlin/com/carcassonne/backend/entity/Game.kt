@@ -15,7 +15,7 @@ data class Game(
 
     val status: String = "WAITING",
 
-    val winner: String = "", // Just store the username of the winner
+    var winner: String = "", // Just store the username of the winner
 
     val createdAt: Instant = Instant.now()
 )

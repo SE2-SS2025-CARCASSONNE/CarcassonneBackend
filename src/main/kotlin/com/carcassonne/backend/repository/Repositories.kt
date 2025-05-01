@@ -27,4 +27,5 @@ interface GameRepository : JpaRepository<Game, Long> {
         @Param("gameCode") gameCode: String,
         @Param("status") status: GamePhase
     )
+    fun findByGameCode(gameCode: String): Game?
 }
