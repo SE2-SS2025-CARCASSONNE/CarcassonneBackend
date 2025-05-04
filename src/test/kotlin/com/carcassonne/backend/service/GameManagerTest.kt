@@ -214,4 +214,244 @@ class GameManagerTest {
         assertFailsWith<IllegalArgumentException>("Position is invalid", block = result)
         assertFalse(game.board.containsKey(Position(5,5)), "Tile should not be placed")
     }
+
+    @Test
+    fun `should place meeple on valid city feature`() {
+        val gameId = "meeple-test"
+        val game = gameManager.getOrCreateGame(gameId)
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
+        game.startGame()
+
+        val tile = Tile(
+            id = "tile1",
+            terrainNorth = TerrainType.CITY, terrainEast = TerrainType.CITY,
+            terrainSouth = TerrainType.CITY, terrainWest = TerrainType.ROAD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(0, 0)
+        )
+        val tile2 = Tile(
+            id = "tile2",
+            terrainNorth = TerrainType.CITY, terrainEast = TerrainType.CITY,
+            terrainSouth = TerrainType.CITY, terrainWest = TerrainType.ROAD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(0, 1) // Direkt nördlich von tile1
+        )
+        gameManager.placeTile(gameId, tile, "Player1")
+        game.nextPlayer()
+        game.status = GamePhase.TILE_PLACEMENT
+
+        gameManager.placeTile(gameId, tile2, "Player2")
+
+        val meeple = Meeple(id = "meeple1", playerId = "Player2", tileId = tile2.id)
+
+        val updatedGameState = gameManager.placeMeeple(gameId, "Player2", meeple, MeeplePosition.N)
+
+        // Sicherstellen, dass der Meeple erfolgreich platziert wurde
+        assertNotNull(updatedGameState, "Meeple should be placed successfully")
+
+        // Optional: Überprüfen, ob der Meeple tatsächlich in der GameState-Liste ist
+        assertTrue(updatedGameState!!.meeplesOnBoard.contains(meeple))
+    }
+
+    @Test
+    fun `should NOT place meeple on invalid field feature`() {
+        val gameId = "meeple-negative-test"
+        val game = gameManager.getOrCreateGame(gameId)
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
+        game.startGame()
+
+        val tile = Tile(
+            id = "tile-invalid",
+            terrainNorth = TerrainType.FIELD, terrainEast = TerrainType.CITY,
+            terrainSouth = TerrainType.FIELD, terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(0, 0)
+        )
+        gameManager.placeTile(gameId, tile, "Player1")
+
+        val meeple = Meeple(id = "meeple-invalid", playerId = "Player1", tileId = tile.id)
+
+        assertThrows<IllegalStateException>("Invalid meeple position") {
+            gameManager.placeMeeple(gameId, "Player1", meeple, MeeplePosition.N)
+        }
+    }
+
+    @Test
+    fun `other player should NOT place a second meeple on the same feature`() {
+        val gameId = "meeple-duplicate-test"
+        val game = gameManager.getOrCreateGame(gameId)
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
+        game.startGame()
+
+        // Beispiel-Tile: Stadt im Osten, Feld in den anderen Bereichen
+        val tile = Tile(
+            id = "tile-conflict",
+            terrainNorth = TerrainType.FIELD, terrainEast = TerrainType.CITY,
+            terrainSouth = TerrainType.FIELD, terrainWest = TerrainType.ROAD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(0, 0)
+        )
+        gameManager.placeTile(gameId, tile, "Player1")
+
+        // Erster Meeple wird korrekt gesetzt
+        val meeple1 = Meeple(id = "meeple1", playerId = "Player1", tileId = tile.id)
+        val gameStateAfterFirstMeeple = gameManager.placeMeeple(gameId, "Player1", meeple1, MeeplePosition.E)
+
+        assertNotNull(gameStateAfterFirstMeeple, "First meeple should be placed successfully")
+        assertTrue(gameStateAfterFirstMeeple!!.meeplesOnBoard.contains(meeple1))
+
+        // Zweiter Spieler versucht, einen Meeple auf dieselbe Position zu setzen
+        val meeple2 = Meeple(id = "meeple2", playerId = "Player2", tileId = tile.id)
+
+        assertThrows<IllegalStateException>("Meeple position already occupied") {
+            gameManager.placeMeeple(gameId, "Player2", meeple2, MeeplePosition.E)
+        }
+    }
+
+    @Test
+    fun `should NOT allow same player to place two meeples on the same tile`() {
+        val gameId = "meeple-double-test"
+        val game = gameManager.getOrCreateGame(gameId)
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
+        game.startGame()
+
+        // Tile mit Stadt im Osten, Road im Westen
+        val tile = Tile(
+            id = "tile-double",
+            terrainNorth = TerrainType.FIELD, terrainEast = TerrainType.CITY,
+            terrainSouth = TerrainType.FIELD, terrainWest = TerrainType.ROAD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(0, 0)
+        )
+        gameManager.placeTile(gameId, tile, "Player1")
+
+        // Erster Meeple wird erfolgreich auf Osten (CITY) gesetzt
+        val meeple1 = Meeple(id = "meeple1", playerId = "Player1", tileId = tile.id)
+        val gameStateAfterFirstMeeple = gameManager.placeMeeple(gameId, "Player1", meeple1, MeeplePosition.E)
+
+        assertNotNull(gameStateAfterFirstMeeple, "First meeple should be placed successfully")
+        assertTrue(gameStateAfterFirstMeeple!!.meeplesOnBoard.contains(meeple1))
+
+        // Derselbe Spieler versucht, einen zweiten Meeple auf Westen (ROAD) zu setzen
+        val meeple2 = Meeple(id = "meeple2", playerId = "Player1", tileId = tile.id)
+
+        assertThrows<IllegalStateException>("Player should NOT be allowed to place two meeples on the same tile") {
+            gameManager.placeMeeple(gameId, "Player1", meeple2, MeeplePosition.W)
+        }
+    }
+
+    @Test
+    fun `should correctly place meeple on rotated tile`() {
+        val gameId = "meeple-rotation-test"
+        val game = gameManager.getOrCreateGame(gameId)
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
+        game.startGame()
+
+        // Tile mit Stadt ursprünglich im Süden, aber gedreht nach Norden
+        val tileRotated = Tile(
+            id = "tile-rotated",
+            terrainNorth = TerrainType.FIELD, terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.CITY, terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.SOUTH, // 🔄 Tile wird gedreht!
+            position = Position(0, 0)
+        )
+        gameManager.placeTile(gameId, tileRotated, "Player1")
+
+        // Statt Süden müssen wir jetzt Norden wählen, weil das ursprüngliche TerrainSouth nach Norden rotiert wurde
+        val meeple = Meeple(id = "meeple-rotated", playerId = "Player1", tileId = tileRotated.id)
+
+        val updatedGameState = gameManager.placeMeeple(gameId, "Player1", meeple, MeeplePosition.N)
+
+        // Erwartung: Meeple sollte erfolgreich platziert werden
+        assertNotNull(updatedGameState, "Meeple should be placed successfully on rotated tile")
+        assertTrue(updatedGameState!!.meeplesOnBoard.contains(meeple))
+    }
+
+    @Test
+    fun `should not allow meeple placement when player has no meeples left`() {
+        val gameId = "meeple-no-meeple-test"
+        val game = gameManager.getOrCreateGame(gameId)
+
+        // Füge zwei Spieler hinzu, damit das Spiel korrekt läuft
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
+        game.startGame()
+
+        // Spieler1 hat keine Meeples mehr
+        val player = game.players.first { it.id == "Player1" }
+        val playerWithoutMeeples = player.copy(remainingMeeple = 0)
+
+        // Aktualisiere die Spieler-Liste im Spiel
+        game.players.find { it.id == playerWithoutMeeples.id }?.let { existingPlayer ->
+            val index = game.players.indexOf(existingPlayer)
+            game.players[index] = playerWithoutMeeples
+        }
+
+        val tile = Tile(
+            id = "tile-test",
+            terrainNorth = TerrainType.CITY, terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.ROAD, terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(0, 0)
+        )
+        gameManager.placeTile(gameId, tile, "Player1")
+
+        val meeple = Meeple(id = "meeple-test", playerId = "Player1", tileId = tile.id)
+
+        // Versuch, einen Meeple zu platzieren → sollte fehlschlagen!
+        val exception = assertThrows<IllegalStateException> {
+            gameManager.placeMeeple(gameId, "Player1", meeple, MeeplePosition.N)
+        }
+        assertEquals("No Meeples remaining for placement!", exception.message)
+    }
+
+    @Test
+    fun `should not allow meeple placement on ROAD if another meeple is on connected road segment`() {
+        val gameId = "road-meeple-test"
+        val game = gameManager.getOrCreateGame(gameId)
+
+        // Zwei Spieler hinzufügen
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
+        game.startGame()
+
+        // Erstes Tile mit Straße, auf das bereits ein Meeple gesetzt wird
+        val tileWithMeeple = Tile(
+            id = "tile-road-1",
+            terrainNorth = TerrainType.FIELD, terrainEast = TerrainType.ROAD,
+            terrainSouth = TerrainType.FIELD, terrainWest = TerrainType.ROAD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(0, 0)
+        )
+        gameManager.placeTile(gameId, tileWithMeeple, "Player1")
+
+        val existingMeeple = Meeple(id = "meeple-existing", playerId = "Player1", tileId = tileWithMeeple.id, position = MeeplePosition.W)
+        game.meeplesOnBoard.add(existingMeeple) // Simuliere bereits gesetzten Meeple
+
+        // Zweites Tile mit einer angrenzenden Straße
+        val adjacentTile = Tile(
+            id = "tile-road-2",
+            terrainNorth = TerrainType.FIELD, terrainEast = TerrainType.ROAD,
+            terrainSouth = TerrainType.FIELD, terrainWest = TerrainType.ROAD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(1, 0) // Direkt rechts daneben
+        )
+        game.nextPlayer()
+        game.status = GamePhase.TILE_PLACEMENT
+        gameManager.placeTile(gameId, adjacentTile, "Player2")
+
+        // Spieler2 versucht jetzt, einen Meeple auf die Straße zu setzen → sollte blockiert werden!
+        val newMeeple = Meeple(id = "meeple-new", playerId = "Player2", tileId = adjacentTile.id)
+
+        val exception = assertThrows<IllegalStateException> {
+            gameManager.placeMeeple(gameId, "Player2", newMeeple, MeeplePosition.W)
+        }
+        assertEquals("Another Meeple is already present on this feature!", exception.message)
+    }
+
 }
