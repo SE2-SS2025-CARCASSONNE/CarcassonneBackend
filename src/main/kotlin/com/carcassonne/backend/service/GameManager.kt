@@ -365,7 +365,7 @@ class GameManager {
         }
 
         if (openEdges == 0) {
-            val involvedMeeples = game.meeplesOnBoard.filter { it.position == MeeplePosition.CENTER && cityTiles.contains(getTilePosition(game, it.tileId)) }
+            val involvedMeeples = game.meeplesOnBoard.filter { it.position == MeeplePosition.C && cityTiles.contains(getTilePosition(game, it.tileId)) }
 
             val playerMeepleCount = involvedMeeples.groupingBy { it.playerId }.eachCount()
             val maxMeeples = playerMeepleCount.maxByOrNull { it.value }?.value ?: 0
@@ -422,7 +422,7 @@ class GameManager {
 
         // Prüfung auf bereits vorhandene Meeples im verbundenen Bereich
         val connectedTiles = getConnectedFeatureTiles(game, tile, position)
-        val featureType = tile.getTerrainType(position.name)
+        val featureType = tile.getTerrainType(position.shortCode)
             ?: throw IllegalStateException("Invalid feature type")
         if (isMeeplePresentOnFeature(game, connectedTiles, featureType)) {
             throw IllegalStateException("Another Meeple is already present on this feature!")
@@ -439,15 +439,16 @@ class GameManager {
         return game
     }
 
-
     private fun isValidMeeplePosition(tile: Tile, position: MeeplePosition): Boolean {
-        // Beispiel-Validierungslogik (Platzierung auf dem Feld, Stadt, Straße etc.)
-        // TODO: Mike: Wie ist Tile-Rotation, was liegt im Norden auf dem Spielbrett
-        // davor feststellen und mitgeben in diese Funktion zB wenn Monastery, dann nur im Center, wenn Meeple im Center, dann Mönch
+        val rotatedTerrains = tile.getRotatedTerrains() // Terrain nach Rotation berechnen
+        val terrain = rotatedTerrains[position.name] ?: return false //  Falls kein Eintrag vorhanden ist, sofort `false` zurückgeben
+
         return when (position) {
-            MeeplePosition.NORTH -> tile.terrainNorth == TerrainType.CITY || tile.terrainNorth == TerrainType.ROAD
-            MeeplePosition.SOUTH -> tile.terrainSouth == TerrainType.FIELD || tile.terrainSouth == TerrainType.MONASTERY // Field brauchen wir ja nicht!
-            else -> true // Weitere Validierungen
+            MeeplePosition.N, MeeplePosition.E, MeeplePosition.S, MeeplePosition.W ->
+                terrain == TerrainType.CITY || terrain == TerrainType.ROAD  // Meeples auf Stadt oder Straße erlauben
+            MeeplePosition.C ->
+                terrain == TerrainType.MONASTERY  // Nur auf Kloster-Mitte erlaubt
+            else -> false // sicherheitshalber alle anderen Fälle blockieren
         }
     }
 
@@ -458,7 +459,6 @@ class GameManager {
 
         val startTilePosition = Position(startTile.position!!.x, startTile.position.y)
         queue.add(startTilePosition to startPosition.name) // Nutze die Richtung als String ("N", "E", etc.)
-
         while (queue.isNotEmpty()) {
             val (currentPos, fromDirection) = queue.removeFirst()
             if (!visited.add(currentPos)) continue
