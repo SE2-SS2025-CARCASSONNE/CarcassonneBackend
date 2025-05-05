@@ -453,5 +453,41 @@ class GameManagerTest {
         }
         assertEquals("Another Meeple is already present on this feature!", exception.message)
     }
+    @Test
+    fun `endGame returns winner with highest score`() {
+        val gameId = "endgame-test"
+        val game = gameManager.getOrCreateGame(gameId)
 
+        game.players.add(Player(id = "Player1", user_id = 1, score = 10, remainingMeeple = 5))
+        game.players.add(Player(id = "Player2", user_id = 2, score = 15, remainingMeeple = 5))
+        game.status = GamePhase.FINISHED
+        val winner = gameManager.endGame(gameId)
+
+        assertEquals("Player2", winner, "Expected Player2 to be the winner with highest score")
+    }
+
+    @Test
+    fun `endGame throws exception if game is not finished`() {
+        val gameId = "not-finished"
+        val game = gameManager.getOrCreateGame(gameId)
+        game.players.add(Player(id = "Player1", user_id = 1, score = 5, remainingMeeple = 5))
+        game.status = GamePhase.TILE_PLACEMENT
+
+        val exception = assertFailsWith<IllegalStateException> {
+            gameManager.endGame(gameId)
+        }
+        assertEquals("Game is not in FINISHED phase", exception.message)
+    }
+
+    @Test
+    fun `endGame throws exception if game has no players`() {
+        val gameId = "no-players"
+        val game = gameManager.getOrCreateGame(gameId)
+        game.status = GamePhase.FINISHED
+
+        val exception = assertFailsWith<IllegalStateException> {
+            gameManager.endGame(gameId)
+        }
+        assertEquals("No players to determine winner", exception.message)
+    }
 }
