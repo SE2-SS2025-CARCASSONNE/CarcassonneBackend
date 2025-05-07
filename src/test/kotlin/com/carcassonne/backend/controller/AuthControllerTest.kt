@@ -43,7 +43,6 @@ class AuthControllerTest {
     fun loginReturn401UponInvalidCredentialsTest() {
         val loginRequest = LoginRequest("wrongName", "wrongPw")
         `when`(authManager.authenticate(any())).thenThrow(BadCredentialsException("Invalid"))
-
         val response = authController.login(loginRequest)
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.statusCode)
@@ -53,7 +52,6 @@ class AuthControllerTest {
     fun loginReturn500UponOtherExceptionTest() {
         val loginRequest = LoginRequest("name", "pw")
         `when`(authManager.authenticate(any())).thenThrow(RuntimeException("DB error"))
-
         val response = authController.login(loginRequest)
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.statusCode)
@@ -71,7 +69,6 @@ class AuthControllerTest {
     fun loginReturn400UponUsernameAlreadyExistsTest() {
         val request = RegisterRequest("name", "pw")
         `when`(userService.findUserByUsername("name")).thenReturn(User(username = "name", password = "hashedPw"))
-
         val response = authController.register(request)
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
@@ -82,7 +79,6 @@ class AuthControllerTest {
         val request = RegisterRequest("name", "pw")
         `when`(userService.findUserByUsername("name")).thenReturn(null)
         `when`(passwordEncoder.encode("pw")).thenReturn("hashedPw")
-
         val response = authController.register(request)
 
         assertEquals(HttpStatus.CREATED, response.statusCode)
@@ -94,7 +90,6 @@ class AuthControllerTest {
         val request = RegisterRequest("name", "pw")
         `when`(userService.findUserByUsername("name")).thenReturn(null)
         `when`(passwordEncoder.encode("pw")).thenThrow(RuntimeException("DB error"))
-
         val response = authController.register(request)
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.statusCode)
