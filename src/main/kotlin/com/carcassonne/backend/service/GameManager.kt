@@ -106,6 +106,56 @@ class GameManager {
      *
      *
       */
+     fun calculateScore(game: GameState, placedTile: Tile) {
+         // Prüfe alle 4 Himmelsrichtungen + Center
+         listOf(
+             MeeplePosition.N,
+             MeeplePosition.E,
+             MeeplePosition.S,
+             MeeplePosition.W,
+             MeeplePosition.C
+         ).forEach { direction ->
+             // 1. Terraintyp der aktuellen Richtung ermitteln
+             val terrainType = placedTile.getTerrainAtOrNull(direction)
+
+             // 2. Nur für CITY/ROAD/MONASTERY weiter prüfen
+             if (terrainType in listOf(TerrainType.CITY, TerrainType.ROAD, TerrainType.MONASTERY)) {
+
+                 // 3. Alle verbundenen Tiles des Features finden
+                 val featureTiles = getConnectedFeatureTiles(
+                     game = game,
+                     startTile = placedTile,
+                     startPosition = direction
+                 )
+
+                 // 4. Abschluss des Features prüfen
+                 val isCompleted = when (terrainType) {
+                     TerrainType.CITY -> isCityCompleted(game, placedTile)
+                     TerrainType.ROAD -> isRoadCompleted(game.board, placedTile.position!!)
+                     TerrainType.MONASTERY -> isMonasteryComplete(game.board, placedTile.position!!)
+                     else -> false
+                 }
+
+                 if (isCompleted) {
+                     // 5. Alle Meeples auf dem Feature sammeln
+                     val involvedMeeples = featureTiles.flatMap { tilePos ->
+                         game.board[tilePos]?.let { tile ->
+                             game.meeplesOnBoard.filter { meeple ->
+                                 // Prüfe, dass der Meeple auf dem Feature-Typ liegt
+                                 meeple.position?.let { meepleDir ->
+                                     tile.getTerrainAtOrNull(meepleDir) == terrainType
+                                 } ?: false
+                             }
+                         } ?: emptyList()
+                     }.toMutableList()
+
+                     // 6. Punkte vergeben & Meeples entfernen
+                     awardPoints(game, involvedMeeples, featureTiles.size,"Kommt später ein Enum herein wird noch geändert")
+                     game.meeplesOnBoard.removeAll(involvedMeeples)
+                 }
+             }
+         }
+     }
 
     private fun awardPoints(
         game: GameState,
