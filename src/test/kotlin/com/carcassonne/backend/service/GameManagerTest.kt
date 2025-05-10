@@ -28,7 +28,7 @@ class GameManagerTest {
     @Test
     fun `should generate tile deck with correct count and valid terrains`() {
         val deck = gameManager.createShuffledTileDeck(seed = 99L)
-        val expectedCount = TerrainType.values().size * 5
+        val expectedCount = gameManager.getUniqueTiles().sumOf { it.count }
         assertEquals(expectedCount, deck.size, "Expected $expectedCount tiles in deck")
 
         deck.forEach { tile ->
