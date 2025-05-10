@@ -106,7 +106,12 @@ class GameManager {
      *
      *
       */
-     fun calculateScore(game: GameState, placedTile: Tile) {
+     fun calculateScore(gameId: String, placedTile: Tile) {
+         val game = games[gameId] ?: throw IllegalArgumentException("Game $gameId is not registered")
+
+         if (game.status != GamePhase.SCORING) {
+             throw IllegalStateException("Game is not in scoring phase")
+         }
          // Prüfe alle 4 Himmelsrichtungen + Center
          listOf(
              MeeplePosition.N,
@@ -149,8 +154,15 @@ class GameManager {
                          } ?: emptyList()
                      }.toMutableList()
 
+                     val featureTypeString = when (terrainType) {
+                         TerrainType.CITY -> "CITY";
+                         TerrainType.ROAD -> "ROAD"
+                         TerrainType.MONASTERY -> "MONASTERY"
+                         else -> ""
+                     }
+
                      // 6. Punkte vergeben & Meeples entfernen
-                     awardPoints(game, involvedMeeples, featureTiles.size,"Kommt später ein Enum herein wird noch geändert")
+                     awardPoints(game, involvedMeeples, featureTiles.size, featureTypeString)
                      game.meeplesOnBoard.removeAll(involvedMeeples)
                  }
              }
