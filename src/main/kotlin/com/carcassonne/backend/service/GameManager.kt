@@ -13,22 +13,20 @@ class GameManager {
 
     // Function to create a shuffled tile deck
     fun createShuffledTileDeck(seed: Long): List<Tile> {
-        val uniqueTiles = getUniqueTiles()
+        val baseTiles = getUniqueTiles()
 
-        // Populate tile deck with base tiles in their respective amounts (72 in total)
-        val tiles = mutableListOf<Tile>()
-        for (tile in uniqueTiles) {
-            repeat(tile.count) { index ->
-                // Create unique id for every tile instance by appending index to base tile id
-                val uniqueId = "${tile.id}-$index"
-                val tileWithId = tile.copy(id = uniqueId)
-                tiles.add(tileWithId)
+        // Create full tile set with unique IDs based on count per base tile
+        val fullDeck = baseTiles.flatMap { baseTile ->
+            List(baseTile.count) { index ->
+                val uniqueId = "${baseTile.id}-$index"
+                baseTile.copy(id = uniqueId)
             }
         }
 
-        // Shuffle tiles using a seed for consistent randomness
-        return tiles.shuffled(Random(seed))
+        // Shuffle deck with fixed seed for reproducibility
+        return fullDeck.shuffled(Random(seed))
     }
+
 
     // Function to draw a tile for the current player
     fun drawTileForPlayer(gameId: String): Tile? {
