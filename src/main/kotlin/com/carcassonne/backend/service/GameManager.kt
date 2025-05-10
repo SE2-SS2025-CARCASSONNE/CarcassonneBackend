@@ -130,17 +130,19 @@ class GameManager {
 
     // Punkteberechnung mit enum für Klarheit
     val pointsPerFeature = when (featureType) {
-        "CITY" -> basePoints * 2
+        "CITY" -> {
+            var points = basePoints * 2
+            // Add shield bonus of 2 points for applicable city tiles
+            val tilesWithShield = getTilesWithShield(involvedMeeples, game)
+            points += tilesWithShield.size * 2
+            points
+        }
         "ROAD" -> basePoints
         "MONASTERY" -> basePoints
         else -> {
             println("Ungültiger Feature-Typ: $featureType")
             0
         }
-    }
-
-    if (featureType == "CITY") {
-
     }
 
     // Punkte verteilen mit Spieler-Check
@@ -160,6 +162,7 @@ class GameManager {
            ${winners.joinToString { "$it (${playerCounts[it]} Meeples)" }}"""
     )
 }
+
     fun endGame(gameId: String): String {
         val game = games[gameId] ?: throw IllegalArgumentException("Game not found")
 
@@ -217,7 +220,6 @@ class GameManager {
                 println("City is completed at ${tile.position}")
             }
         }
-
 
         //game.nextPlayer() move to endTurn logic
         return game
@@ -741,5 +743,22 @@ class GameManager {
             )
         )
         return uniqueTiles
+    }
+
+    fun getTilesWithShield(involvedMeeples: List<Meeple>, gameState: GameState): List<Tile> {
+        val tilesWithShield = mutableListOf<Tile>()
+
+        // Add all tiles with shield to the list (no need to manually check for city)
+        for (tile in gameState.tileDeck) {
+            if (tile.hasShield) {
+                for (meeple in involvedMeeples) {
+                    if (meeple.tileId == tile.id) {
+                        tilesWithShield.add(tile)
+                        break // Exit inner loop upon match
+                    }
+                }
+            }
+        }
+        return tilesWithShield
     }
 }
