@@ -454,6 +454,65 @@ class GameManagerTest {
         assertEquals("Another Meeple is already present on this feature!", exception.message)
     }
     @Test
+    fun `score completed city with meeples`() {
+        val gameId = "scoring-test-city"
+
+        val game = gameManager.getOrCreateGame(gameId)
+
+
+
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
+        game.startGame()
+
+        game.status = GamePhase.TILE_PLACEMENT
+        val cityTile = Tile(
+            id = "city-1",
+            terrainNorth = TerrainType.CITY,
+            terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(0, 0)
+        )
+        val cityTile2 = Tile(
+            id = "city-2",
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.CITY,
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(0, 1)
+        )
+
+        // Spiel initialisieren
+
+
+        // Tile und Meeple platzieren
+        gameManager.placeTile(gameId, cityTile, "Player1")
+        gameManager.placeMeeple(
+            gameId,
+            "Player1",
+            Meeple(id = "m1", playerId = "Player1", tileId = "city-1"),
+            MeeplePosition.N
+        )
+
+
+
+
+        game.status = GamePhase.TILE_PLACEMENT
+        //Runde 2
+        gameManager.placeTile(gameId,cityTile2,"Player2")
+        //Meeple Placement künstlich skippen
+        game.status = GamePhase.SCORING
+        gameManager.calculateScore(gameId,cityTile2)
+
+
+        // Assert
+        assertEquals(4, game.players[0].score) // 1 Tile × 2 Punkte
+        assertTrue(game.meeplesOnBoard.none { it.id == "m1" })
+    }
+    @Test
     fun `endGame returns winner with highest score`() {
         val gameId = "endgame-test"
         val game = gameManager.getOrCreateGame(gameId)
