@@ -8,7 +8,8 @@ data class Tile(
     val tileRotation: TileRotation,
     val position: Position? = null,
     val hasMonastery: Boolean = false,
-    val count: Int
+    val hasShield: Boolean = false,
+    val count: Int = 1
 )
 
 fun Tile.getAllTerrains(): Set<TerrainType> = setOf(
