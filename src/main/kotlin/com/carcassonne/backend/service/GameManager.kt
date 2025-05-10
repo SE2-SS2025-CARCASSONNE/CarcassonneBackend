@@ -13,30 +13,238 @@ class GameManager {
 
     // Function to create a shuffled tile deck
     fun createShuffledTileDeck(seed: Long): List<Tile> {
-        // Generate a predefined set of tiles (for demonstration)
-        val predefinedTiles = mutableListOf<Tile>()
+        // Save all 24 unique game tiles in a list for tile deck generation
+        val uniqueTiles = listOf(
+            Tile(
+                id = "tile-a-2",
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainSouth = TerrainType.ROAD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                hasMonastery = true,
+                count = 2
+            ),
+            Tile(
+                id = "tile-b-4",
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainSouth = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                hasMonastery = true,
+                count = 4
+            ),
+            Tile(
+                id = "tile-c-1",
+                terrainNorth = TerrainType.CITY,
+                terrainEast = TerrainType.CITY,
+                terrainSouth = TerrainType.CITY,
+                terrainWest = TerrainType.CITY,
+                tileRotation = TileRotation.NORTH,
+                count = 1
+            ),
+            Tile(
+                id = "tile-d-4",
+                terrainNorth = TerrainType.CITY,
+                terrainEast = TerrainType.ROAD,
+                terrainSouth = TerrainType.FIELD,
+                terrainWest = TerrainType.ROAD,
+                tileRotation = TileRotation.NORTH,
+                count = 4
+            ),
+            Tile(
+                id = "tile-e-5",
+                terrainNorth = TerrainType.CITY,
+                terrainEast = TerrainType.FIELD,
+                terrainSouth = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                count = 5
+            ),
+            Tile(
+                id = "tile-f-2",
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.CITY,
+                terrainSouth = TerrainType.FIELD,
+                terrainWest = TerrainType.CITY,
+                tileRotation = TileRotation.NORTH,
+                count = 2
+            ),
+            Tile(
+                id = "tile-g-1",
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.CITY,
+                terrainSouth = TerrainType.FIELD,
+                terrainWest = TerrainType.CITY,
+                tileRotation = TileRotation.NORTH,
+                count = 1
+            ),
+            Tile(
+                id = "tile-h-3",
+                terrainNorth = TerrainType.CITY,
+                terrainEast = TerrainType.FIELD,
+                terrainSouth = TerrainType.CITY,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                count = 3
+            ),
+            Tile(
+                id = "tile-i-2",
+                terrainNorth = TerrainType.CITY,
+                terrainEast = TerrainType.FIELD,
+                terrainSouth = TerrainType.FIELD,
+                terrainWest = TerrainType.CITY,
+                tileRotation = TileRotation.NORTH,
+                count = 2
+            ),
+            Tile(
+                id = "tile-j-3",
+                terrainNorth = TerrainType.CITY,
+                terrainEast = TerrainType.ROAD,
+                terrainSouth = TerrainType.ROAD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                count = 3
+            ),
+            Tile(
+                id = "tile-k-3",
+                terrainNorth = TerrainType.CITY,
+                terrainEast = TerrainType.FIELD,
+                terrainSouth = TerrainType.ROAD,
+                terrainWest = TerrainType.ROAD,
+                tileRotation = TileRotation.NORTH,
+                count = 3
+            ),
+            Tile(
+                id = "tile-m-3",
+                terrainNorth = TerrainType.CITY,
+                terrainEast = TerrainType.ROAD,
+                terrainSouth = TerrainType.ROAD,
+                terrainWest = TerrainType.ROAD,
+                tileRotation = TileRotation.NORTH,
+                count = 3
+            ),
+            Tile(
+                id = "tile-n-3",
+                terrainNorth = TerrainType.CITY,
+                terrainEast = TerrainType.CITY,
+                terrainSouth = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                count = 3
+            ),
+            Tile(
+                id = "tile-o-2",
+                terrainNorth = TerrainType.CITY,
+                terrainEast = TerrainType.CITY,
+                terrainSouth = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                count = 2
+            ),
+            Tile(
+                id = "tile-p-2",
+                terrainNorth = TerrainType.CITY,
+                terrainEast = TerrainType.ROAD,
+                terrainSouth = TerrainType.ROAD,
+                terrainWest = TerrainType.CITY,
+                tileRotation = TileRotation.NORTH,
+                count = 2
+            ),
+            Tile(
+                id = "tile-q-3",
+                terrainNorth = TerrainType.CITY,
+                terrainEast = TerrainType.ROAD,
+                terrainSouth = TerrainType.ROAD,
+                terrainWest = TerrainType.CITY,
+                tileRotation = TileRotation.NORTH,
+                count = 3
+            ),
+            Tile(
+                id = "tile-r-1",
+                terrainNorth = TerrainType.CITY,
+                terrainEast = TerrainType.CITY,
+                terrainSouth = TerrainType.FIELD,
+                terrainWest = TerrainType.CITY,
+                tileRotation = TileRotation.NORTH,
+                count = 1
+            ),
+            Tile(
+                id = "tile-s-3",
+                terrainNorth = TerrainType.CITY,
+                terrainEast = TerrainType.CITY,
+                terrainSouth = TerrainType.FIELD,
+                terrainWest = TerrainType.CITY,
+                tileRotation = TileRotation.NORTH,
+                count = 3
+            ),
+            Tile(
+                id = "tile-t-2",
+                terrainNorth = TerrainType.CITY,
+                terrainEast = TerrainType.CITY,
+                terrainSouth = TerrainType.ROAD,
+                terrainWest = TerrainType.CITY,
+                tileRotation = TileRotation.NORTH,
+                count = 2
+            ),
+            Tile(
+                id = "tile-u-1",
+                terrainNorth = TerrainType.CITY,
+                terrainEast = TerrainType.CITY,
+                terrainSouth = TerrainType.ROAD,
+                terrainWest = TerrainType.CITY,
+                tileRotation = TileRotation.NORTH,
+                count = 1
+            ),
+            Tile(
+                id = "tile-v-8",
+                terrainNorth = TerrainType.ROAD,
+                terrainEast = TerrainType.FIELD,
+                terrainSouth = TerrainType.ROAD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                count = 8
+            ),
+            Tile(
+                id = "tile-w-9",
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainSouth = TerrainType.ROAD,
+                terrainWest = TerrainType.ROAD,
+                tileRotation = TileRotation.NORTH,
+                count = 9
+            ),
+            Tile(
+                id = "tile-x-4",
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.ROAD,
+                terrainSouth = TerrainType.ROAD,
+                terrainWest = TerrainType.ROAD,
+                tileRotation = TileRotation.NORTH,
+                count = 4
+            ),
+            Tile(
+                id = "tile-y-1",
+                terrainNorth = TerrainType.ROAD,
+                terrainEast = TerrainType.ROAD,
+                terrainSouth = TerrainType.ROAD,
+                terrainWest = TerrainType.ROAD,
+                tileRotation = TileRotation.NORTH,
+                count = 1
+            )
+        )
 
-        // Populate predefined tiles
-        TerrainType.values().forEach { terrain ->
-            // For simplicity, create 5 tiles of each terrain type
-            repeat(5) {
-                predefinedTiles.add(
-                    Tile(
-                        id = "${terrain}_${it}",
-                        terrainNorth = terrain,
-                        terrainEast = terrain,
-                        terrainSouth = terrain,
-                        terrainWest = terrain,
-                        tileRotation = TileRotation.NORTH
-                    )
-                )
+        // Populate tile deck with tiles in their respective amounts (72 in total)
+        val tiles = mutableListOf<Tile>()
+        for (tile in uniqueTiles) {
+            repeat(tile.count) {
+                tiles.add(tile)
             }
         }
 
         // Shuffle tiles using a seed for consistent randomness
-        val shuffledDeck = predefinedTiles.shuffled(Random(seed))
-
-        return shuffledDeck
+        return tiles.shuffled(Random(seed))
     }
 
     // Function to draw a tile for the current player
