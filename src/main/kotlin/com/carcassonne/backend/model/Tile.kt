@@ -7,7 +7,9 @@ data class Tile(
     val terrainWest: TerrainType,
     val tileRotation: TileRotation,
     val position: Position? = null,
-    val hasMonastery: Boolean = false
+    val hasMonastery: Boolean = false,
+    val hasShield: Boolean = false,
+    val count: Int = 1
 )
 
 fun Tile.getAllTerrains(): Set<TerrainType> = setOf(
@@ -76,9 +78,7 @@ enum class TerrainType {
     ROAD,
     CITY,
     MONASTERY,
-    FIELD,
-    RIVER,
-    GARDEN
+    FIELD
 }
 
 enum class TileRotation {
