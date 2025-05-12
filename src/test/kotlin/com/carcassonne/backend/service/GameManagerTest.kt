@@ -456,16 +456,14 @@ class GameManagerTest {
     @Test
     fun `score completed city with meeples`() {
         val gameId = "scoring-test-city"
-
         val game = gameManager.getOrCreateGame(gameId)
-
-
 
         game.addPlayer("Player1")
         game.addPlayer("Player2")
         game.startGame()
 
         game.status = GamePhase.TILE_PLACEMENT
+
         val cityTile = Tile(
             id = "city-1",
             terrainNorth = TerrainType.CITY,
@@ -484,10 +482,7 @@ class GameManagerTest {
             tileRotation = TileRotation.NORTH,
             position = Position(0, 1)
         )
-
         // Spiel initialisieren
-
-
         // Tile und Meeple platzieren
         gameManager.placeTile(gameId, cityTile, "Player1")
         gameManager.placeMeeple(
@@ -496,22 +491,216 @@ class GameManagerTest {
             Meeple(id = "m1", playerId = "Player1", tileId = "city-1"),
             MeeplePosition.N
         )
-
-
-
-
         game.status = GamePhase.TILE_PLACEMENT
         //Runde 2
         gameManager.placeTile(gameId,cityTile2,"Player2")
         //Meeple Placement künstlich skippen
         game.status = GamePhase.SCORING
         gameManager.calculateScore(gameId,cityTile2)
-
-
         // Assert
         assertEquals(4, game.players[0].score) // 1 Tile × 2 Punkte
         assertTrue(game.meeplesOnBoard.none { it.id == "m1" })
     }
+    @Test
+    fun `do not score incomplete road`() {
+        val gameId = "scoring-test-road"
+        val game = gameManager.getOrCreateGame(gameId)
+
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
+        game.startGame()
+
+        game.status = GamePhase.TILE_PLACEMENT
+
+        val roadTile = Tile(
+            id = "road-1",
+            terrainEast = TerrainType.ROAD,
+            terrainWest = TerrainType.FIELD,
+            terrainNorth = TerrainType.FIELD,
+            terrainSouth = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(0, 0)
+        )
+        // Tile & Meeple platzieren
+        gameManager.placeTile(gameId, roadTile, "Player1")
+        gameManager.placeMeeple(
+            gameId,
+            "Player1",
+            Meeple(id = "m1", playerId = "Player1", tileId = "road-1"),
+            MeeplePosition.E
+        )
+
+        // Scoring direkt auslösen
+        game.status = GamePhase.SCORING
+        gameManager.calculateScore(gameId, roadTile)
+        //Straße sollte nicht gewertet werden - da nicht vollständig
+        assertEquals(0, game.players[0].score)
+        assertTrue(game.meeplesOnBoard.any { it.id == "m1" })
+    }
+    /*
+    @Test
+    fun `score completed monastery`() {
+        val gameId = "scoring-test-monastery"
+        val game = gameManager.getOrCreateGame(gameId)
+
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
+        game.startGame()
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // 1. Start-Tile bei (0,0)
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "start-tile",
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainSouth = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(0, 0)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // 2. Tile östlich von (0,0) → (1,0)
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "tile-east",
+                terrainWest = TerrainType.FIELD, // Verbindung zu start-tile
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainSouth = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(1, 0)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // 3. Tile nördlich von (1,0) → (1,1) (späteres Kloster)
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "tile-north",
+                terrainSouth = TerrainType.FIELD, // Verbindung zu tile-east
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(1, 1)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // 4. Tile westlich von (1,1) → (0,1)
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "tile-west",
+                terrainEast = TerrainType.FIELD, // Verbindung zu tile-north
+                terrainNorth = TerrainType.FIELD,
+                terrainSouth = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(0, 1)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // 5. Tile östlich von (1,1) → (2,1)
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "tile-east-2",
+                terrainWest = TerrainType.FIELD, // Verbindung zu tile-north
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainSouth = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(2, 1)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // 6. Tile nördlich von (1,1) → (1,2)
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "tile-north-2",
+                terrainSouth = TerrainType.FIELD, // Verbindung zu tile-north
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(1, 2)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // 7. Kloster-Tile in der Mitte (1,1)
+        val monasteryTile = Tile(
+            id = "monastery-tile",
+            hasMonastery = true,
+            terrainNorth = TerrainType.FIELD, // Verbindung zu tile-north-2
+            terrainEast = TerrainType.FIELD, // Verbindung zu tile-east-2
+            terrainSouth = TerrainType.FIELD, // Verbindung zu tile-east
+            terrainWest = TerrainType.FIELD, // Verbindung zu tile-west
+            tileRotation = TileRotation.NORTH,
+            position = Position(1, 1)
+        )
+        gameManager.placeTile(gameId, monasteryTile, "Player1")
+
+        // 8. Meeple platzieren
+        gameManager.placeMeeple(
+            gameId,
+            "Player1",
+            Meeple(id = "m1", playerId = "Player1", tileId = "monastery-tile"),
+            MeeplePosition.C
+        )
+
+        // 9. Scoring
+        game.status = GamePhase.SCORING
+        gameManager.calculateScore(gameId, monasteryTile)
+
+        // Assert
+        assertEquals(9, game.players[0].score) // 8 Nachbarn + Kloster selbst
+        assertTrue(game.meeplesOnBoard.none { it.id == "m1" })
+       }
+     */
+    @Test
+    fun `throw IllegalStateException when scoring in wrong phase`() {
+        val gameId = "scoring-exception-test"
+        val game = gameManager.getOrCreateGame(gameId)
+
+        // Spieler hinzufügen und Spiel starten
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
+        game.startGame()
+
+        // Tile in Phase TILE_PLACEMENT platzieren
+        val tile = Tile(
+            id = "test-tile",
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(0, 0)
+        )
+        gameManager.placeTile(gameId, tile, "Player1")
+
+        // Phase explizit auf Tile-Placement belassen um Exception zu provozieren
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // Act & Assert: Exception prüfen
+        val exception = assertThrows<IllegalStateException> {
+            gameManager.calculateScore(gameId, tile)
+        }
+        //Richtige Exception Nachricht muss kocmmen
+        assertEquals("Game is not in scoring phase", exception.message)
+    }
+
     @Test
     fun `endGame returns winner with highest score`() {
         val gameId = "endgame-test"
