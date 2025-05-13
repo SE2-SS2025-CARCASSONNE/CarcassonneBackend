@@ -453,6 +453,56 @@ class GameManagerTest {
         }
         assertEquals("Another Meeple is already present on this feature!", exception.message)
     }
+
+    @Test
+    fun `should correctly place meeple on monastery and reject placement on non-monastery tile`() {
+        val gameId = "meeple-monastery-test"
+        val game = gameManager.getOrCreateGame(gameId)
+
+        game.addPlayer("Player1")
+        game.addPlayer("Player2")
+        game.startGame()
+
+        // Tile mit Kloster
+        val monasteryTile = Tile(
+            id = "tile-monastery",
+            terrainNorth = TerrainType.FIELD, terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.FIELD, terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(0, 0),
+            hasMonastery = true
+        )
+
+        gameManager.placeTile(gameId, monasteryTile, "Player1")
+
+        // Fall 1: Valid Meeple Placement auf Kloster
+        val meepleValid = Meeple(id = "meeple-valid", playerId = "Player1", tileId = monasteryTile.id)
+        val updatedGameState = gameManager.placeMeeple(gameId, "Player1", meepleValid, MeeplePosition.C)
+
+        assertNotNull(updatedGameState, "Meeple should be placed successfully")
+        assertTrue(updatedGameState!!.meeplesOnBoard.contains(meepleValid))
+
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // Tile ohne Kloster
+        val normalTile = Tile(
+            id = "tile-no-monastery",
+            terrainNorth = TerrainType.CITY, terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.FIELD, terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(1, 0),
+            hasMonastery = false
+        )
+        gameManager.placeTile(gameId, normalTile, "Player2")
+
+        // Fall 2: Invalid Meeple Placement auf Nicht-Kloster
+        val meepleInvalid = Meeple(id = "meeple-invalid", playerId = "Player2", tileId = normalTile.id)
+
+        assertThrows<IllegalStateException>("Invalid meeple position") {
+            gameManager.placeMeeple(gameId, "Player2", meepleInvalid, MeeplePosition.C)
+        }
+    }
+
     @Test
     fun `score completed city with meeples`() {
         val gameId = "scoring-test-city"

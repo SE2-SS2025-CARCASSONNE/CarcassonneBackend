@@ -19,6 +19,9 @@ fun Tile.getAllTerrains(): Set<TerrainType> = setOf(
 fun Tile.isRoad(): Boolean = getAllTerrains().contains(TerrainType.ROAD)
 fun Tile.isCity(): Boolean = getAllTerrains().contains(TerrainType.CITY)
 
+fun Tile.isMonastery(): Boolean {
+    return hasMonastery
+}
 
 fun Tile.getRotatedTerrains(): Map<String, TerrainType> {
     return when (tileRotation) {

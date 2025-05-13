@@ -479,7 +479,11 @@ class GameManager {
 
         // Prüfung auf bereits vorhandene Meeples im verbundenen Bereich
         val connectedTiles = getConnectedFeatureTiles(game, tile, position)
-        val featureType = tile.getTerrainType(position.shortCode)
+        if (connectedTiles.isEmpty()) {
+            println("No connected feature found for Meeple at position: $position")
+        }
+        val featureType = if (position == MeeplePosition.C) TerrainType.MONASTERY
+        else tile.getTerrainType(position.name)
             ?: throw IllegalStateException("Invalid feature type")
         if (isMeeplePresentOnFeature(game, connectedTiles, featureType)) {
             throw IllegalStateException("Another Meeple is already present on this feature!")
@@ -491,22 +495,20 @@ class GameManager {
 
         // Nächster Spielstatus
         game.status = GamePhase.SCORING //Mike: Ist das richtig oder müssen wir auf SCORING? --> Scoring lt. Bespr. mit Jakob/Felix 27.04.2025
-        game.nextPlayer()
+        game.nextPlayer() //TODO: Mike: Check mit Jakob/Felix, ob ich überhaupt auf nextPlayer stellen darf!
 
         return game
     }
 
     private fun isValidMeeplePosition(tile: Tile, position: MeeplePosition): Boolean {
-        val rotatedTerrains = tile.getRotatedTerrains() // Terrain nach Rotation berechnen
-        val terrain = rotatedTerrains[position.name] ?: return false //  Falls kein Eintrag vorhanden ist, sofort `false` zurückgeben
-
-        return when (position) {
-            MeeplePosition.N, MeeplePosition.E, MeeplePosition.S, MeeplePosition.W ->
-                terrain == TerrainType.CITY || terrain == TerrainType.ROAD  // Meeples auf Stadt oder Straße erlauben
-            MeeplePosition.C ->
-                terrain == TerrainType.MONASTERY  // Nur auf Kloster-Mitte erlaubt
-            else -> false // sicherheitshalber alle anderen Fälle blockieren
+        if (position == MeeplePosition.C) {
+            return tile.isMonastery()
         }
+
+        val rotatedTerrains = tile.getRotatedTerrains()
+        val terrain = rotatedTerrains[position.name] ?: return false
+
+        return terrain == TerrainType.CITY || terrain == TerrainType.ROAD
     }
 
     fun getConnectedFeatureTiles(game: GameState, startTile: Tile, startPosition: MeeplePosition): List<Position> {
