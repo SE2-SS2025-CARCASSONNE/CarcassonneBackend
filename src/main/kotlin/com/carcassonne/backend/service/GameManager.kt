@@ -113,7 +113,7 @@ class GameManager {
              val terrainType = placedTile.getTerrainAtOrNull(direction)
 
              // 2. Nur für CITY/ROAD/MONASTERY weiter prüfen
-             if (terrainType in listOf(TerrainType.CITY, TerrainType.ROAD, TerrainType.MONASTERY)) {
+             if (terrainType in listOf(TerrainType.CITY, TerrainType.ROAD, TerrainType.MONASTERY) || placedTile.hasMonastery) {
 
                  // 3. Alle verbundenen Tiles des Features finden
                  val featureTiles = getConnectedFeatureTiles(

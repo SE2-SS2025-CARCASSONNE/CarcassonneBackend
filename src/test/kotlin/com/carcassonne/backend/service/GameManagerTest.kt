@@ -587,7 +587,7 @@ class GameManagerTest {
         assertEquals(0, game.players[0].score)
         assertTrue(game.meeplesOnBoard.any { it.id == "m1" })
     }
-    /*
+
     @Test
     fun `score completed monastery`() {
         val gameId = "scoring-test-monastery"
@@ -637,7 +637,7 @@ class GameManagerTest {
                 terrainEast = TerrainType.FIELD,
                 terrainWest = TerrainType.FIELD,
                 tileRotation = TileRotation.NORTH,
-                position = Position(1, 1)
+                position = Position(2, 0)
             ),
             "Player1"
         )
@@ -682,10 +682,38 @@ class GameManagerTest {
                 terrainEast = TerrainType.FIELD,
                 terrainWest = TerrainType.FIELD,
                 tileRotation = TileRotation.NORTH,
+                position = Position(0, 2)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "tile-north-3",
+                terrainSouth = TerrainType.FIELD, // Verbindung zu tile-north
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
                 position = Position(1, 2)
             ),
             "Player1"
         )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "tile-south-west",
+                terrainSouth = TerrainType.FIELD, // Verbindung zu tile-north
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(2, 2)
+            ),
+            "Player1")
+
         game.status = GamePhase.TILE_PLACEMENT
 
         // 7. Kloster-Tile in der Mitte (1,1)
@@ -717,7 +745,7 @@ class GameManagerTest {
         assertEquals(9, game.players[0].score) // 8 Nachbarn + Kloster selbst
         assertTrue(game.meeplesOnBoard.none { it.id == "m1" })
        }
-     */
+
     @Test
     fun `throw IllegalStateException when scoring in wrong phase`() {
         val gameId = "scoring-exception-test"
