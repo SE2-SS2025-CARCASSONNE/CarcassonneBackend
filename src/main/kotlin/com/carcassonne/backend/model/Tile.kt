@@ -63,6 +63,20 @@ fun Tile.getTerrainType(direction: String): TerrainType? {
     return rotatedTerrains[direction] // Gibt den TerrainType für die angegebene Richtung zurück
 }
 
+fun Tile.getTerrainAtOrNull(direction: MeeplePosition?): TerrainType? {
+    return direction?.let {
+        when (it) {
+            MeeplePosition.N -> getRotatedTerrains()["N"]
+            MeeplePosition.E  -> getRotatedTerrains()["E"]
+            MeeplePosition.S -> getRotatedTerrains()["S"]
+            MeeplePosition.W  -> getRotatedTerrains()["W"]
+            MeeplePosition.C -> TerrainType.MONASTERY
+            else -> null
+        }
+    }
+}
+
+
 enum class TerrainType {
     ROAD,
     CITY,
