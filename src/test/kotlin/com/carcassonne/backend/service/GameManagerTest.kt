@@ -64,14 +64,27 @@ class GameManagerTest {
 
 
     @Test
-    fun `drawTileForPlayer should return tile if deck has tiles`() {
+    fun `drawTileForPlayer should return tile if deck has placeable tile`() {
         val game = gameManager.getOrCreateGame("game-draw")
+
+        // Place a starting tile at (0,0) so something is on the board
+        game.board[Position(0, 0)] = Tile(
+            id = "start-tile",
+            terrainNorth = TerrainType.ROAD,
+            terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH
+        )
+
+        // Add a tile that can connect to that starting tile
         val tile = Tile(
-            "${TerrainType.CITY}_${this}",
-            TerrainType.CITY, TerrainType.CITY,
-            TerrainType.CITY, TerrainType.ROAD,
-            TileRotation.NORTH,
-            Position(0,0)
+            id = "test-tile",
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.ROAD,
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH
         )
         game.tileDeck.add(tile)
 
