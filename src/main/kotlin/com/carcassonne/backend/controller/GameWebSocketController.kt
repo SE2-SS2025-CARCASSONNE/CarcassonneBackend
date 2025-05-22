@@ -22,22 +22,28 @@ class GameWebSocketController(
             "join_game" -> {
                 val game = gameManager.getOrCreateGame(msg.gameId)
 
-                // Suche nach Player mit ID : "Player"
-                val playerr = game.findPlayerById(msg.player);
-                //!game.players.contains(msg.player old code
-                if (playerr == null) {
-                    //game.players.add(msg.player)
-                    game.addPlayer(msg.player);
+                //Always generate and send updated list
+                val playerAlreadyExists = game.findPlayerById(msg.player) != null
+                if (!playerAlreadyExists) {
+                    game.addPlayer(msg.player)
                 }
 
                 val payload = mapOf(
                     "type" to "player_joined",
-                    "player" to msg.player,
-                    "players" to game.players,
-                    "currentPlayer" to game.getCurrentPlayer()
+                    "players" to game.players.map { it.id },
+                    "currentPlayer" to game.getCurrentPlayer(),
+                    "host" to game.players.firstOrNull()?.id
                 )
 
+                //Always send updated list to ALL
                 messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
+
+                //Also send it privately to the newly joined player for guaranteed sync
+                messagingTemplate.convertAndSendToUser(
+                    msg.player,
+                    "/queue/private",
+                    payload
+                )
             }
 
             "place_tile" -> {
