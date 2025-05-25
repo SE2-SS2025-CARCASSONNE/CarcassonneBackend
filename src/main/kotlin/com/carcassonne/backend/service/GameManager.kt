@@ -28,16 +28,25 @@ class GameManager {
     }
 
 
-    // Function to draw a tile for the current player
     fun drawTileForPlayer(gameId: String): Tile? {
         val game = games[gameId] ?: return null
-        val tile = game.drawTile() // Use the drawTile method from GameState to get a tile
-        if (tile != null) {
-            if (!canPlaceTileAnywhere(game, tile)) println("No legal placement possible. Skipping tile")
-            return tile
+
+        while (game.tileDeck.isNotEmpty()) {
+            val tile = game.drawTile()!!
+            if (canPlaceTileAnywhere(game, tile)) {
+                return tile
+            } else {
+                println("Tile ${tile.id} has no valid placement and is discarded")
+                // Optional: track discarded tiles if you want
+            }
         }
-        return null // Return null if no tile is available
+
+        // No tiles left that can be played
+        println("No more playable tiles in the deck")
+        game.finishGame() // or set status to SCORING if applicable
+        return null
     }
+
 
     fun canPlaceTileAnywhere(game: GameState, tile: Tile): Boolean {
         val terrainMap = tile.getRotatedTerrains()
