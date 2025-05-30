@@ -107,62 +107,8 @@ class GameManager {
     }
 
 
- /*   fun canPlaceTileAnywhere(game: GameState, tile: Tile): Boolean {
-        val terrainMap = tile.getRotatedTerrains()
 
-        // Try placing the tile at every empty spot next to existing tiles
-        val potentialSpots = game.board.keys.flatMap { pos ->
-            listOf(
-                Position(pos.x + 1, pos.y),
-                Position(pos.x - 1, pos.y),
-                Position(pos.x, pos.y + 1),
-                Position(pos.x, pos.y - 1)
-            )
-        }.filter { it !in game.board.keys }.toSet()
 
-        for (spot in potentialSpots) {
-            for (rotation in TileRotation.values()) {
-                val rotatedTile = tile.copy(tileRotation = rotation, position = spot)
-                if (isValidPosition(game, rotatedTile, spot, rotation)) {
-                    return true
-                }
-            }
-        }
-
-        return false
-    }
-*/
-     /*
-     * fun calculatePoints(gameId: String): GameState?
-     * {
-     *      if(isMonasteryComplete)
-     *      {
-     *
-     *      }
-     * }
-     *
-     *private fun awardPoints(
-    game: GameState,
-    involvedMeeples: List<Meeple>,
-    basePoints: Int,
-    featureType: String
-) {
-    val playerCounts = involvedMeeples.groupBy { it.playerId }.mapValues { it.value.size }
-    val maxCount = playerCounts.maxOfOrNull { it.value } ?: 0
-    val winners = playerCounts.filter { it.value == maxCount }.keys
-
-    winners.forEach { playerId ->
-        val points = when (featureType) {
-            "CITY" -> basePoints * 2
-            "ROAD" -> basePoints
-            else -> 0
-        }
-        game.players.find { it.id == playerId }?.points += points
-     *
-     *
-     *
-     *
-      */
      fun calculateScore(gameId: String, placedTile: Tile) {
          val game = games[gameId] ?: throw IllegalArgumentException("Game $gameId is not registered")
 
