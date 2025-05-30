@@ -2,7 +2,6 @@ package com.carcassonne.backend.repository
 
 import com.carcassonne.backend.entity.Game
 import com.carcassonne.backend.entity.User
-import com.carcassonne.backend.model.GamePhase
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -25,7 +24,10 @@ interface GameRepository : JpaRepository<Game, Long> {
     @Query("UPDATE Game g SET g.status = :status WHERE g.gameCode = :gameCode")
     fun updateStatusByGameCode(
         @Param("gameCode") gameCode: String,
-        @Param("status") status: GamePhase
+        @Param("status") status: String
     )
+
+
+    // Repository method should use String
     fun findByGameCode(gameCode: String): Game?
 }

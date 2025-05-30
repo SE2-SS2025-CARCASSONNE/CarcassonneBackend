@@ -46,6 +46,7 @@ class GameWebSocketController(
                 )
             }
 
+
             "place_tile" -> {
                 val tile = msg.tile
                 val x = tile?.position?.x
@@ -82,7 +83,7 @@ class GameWebSocketController(
 
                 // Update DB
                 try {
-                    gameRepository.updateStatusByGameCode(msg.gameId, GamePhase.TILE_PLACEMENT)
+                    gameRepository.updateStatusByGameCode(msg.gameId, GamePhase.TILE_PLACEMENT.name)
                     println(">>> [Backend] Game status updated in DB")
                 } catch (e: Exception) {
                     println(">>> [Backend] ERROR updating DB: ${e.message}")
@@ -96,6 +97,26 @@ class GameWebSocketController(
                 println(">>> [Backend] Sending game_started to /topic/game/${msg.gameId} with $payload")
                 messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
             }
+            "DRAW_TILE" -> {
+                println(">>> [Backend] Handling DRAW_TILE for ${msg.player} in game ${msg.gameId}")
+                val drawnTile = gameManager.drawTileForPlayer(msg.gameId)
+
+                if (drawnTile != null) {
+                    val payload = mapOf(
+                        "type" to "TILE_DRAWN",
+                        "tile" to drawnTile
+                    )
+                    println(">>> Sending TILE_DRAWN to /topic/game/${msg.gameId}")
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
+                } else {
+                    val error = mapOf(
+                        "type" to "error",
+                        "message" to "No more playable tiles"
+                    )
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
+                }
+            }
+
             "end_game" -> {
                 val game = gameManager.getOrCreateGame(msg.gameId)
 
