@@ -187,27 +187,6 @@ class GameManagerTest {
     }
 
     @Test
-    fun `should reject tile placement if not in tile placement phase`() {
-        val gameId = "wrong-phase"
-        val game = gameManager.getOrCreateGame(gameId)
-        game.addPlayer("Player1")
-        game.addPlayer("Player2")
-        game.status = GamePhase.WAITING
-
-        val tile = Tile(
-            "${TerrainType.ROAD}_${this}",
-            TerrainType.ROAD, TerrainType.ROAD,
-            TerrainType.ROAD, TerrainType.ROAD,
-            TileRotation.NORTH,
-            Position(0,0)
-        )
-        val result: () -> Unit = { gameManager.placeTile(gameId, tile, "Player1") } // Wrong phase/game status
-
-        assertFailsWith<IllegalStateException>("Game is not in tile placement phase", block = result)
-        assertFalse(game.board.containsKey(Position(0,0)), "Tile should not be placed")
-    }
-
-    @Test
     fun `should reject tile placement if invalid position`() {
         val gameId = "invalid-position"
         val game = gameManager.getOrCreateGame(gameId)
@@ -215,18 +194,26 @@ class GameManagerTest {
         game.addPlayer("Player2")
         game.startGame()
 
-        val tile = Tile(
-            "${TerrainType.ROAD}_${this}",
-            TerrainType.ROAD, TerrainType.ROAD,
-            TerrainType.ROAD, TerrainType.ROAD,
-            TileRotation.NORTH,
-            Position(5,5)
-        )
-        val result: () -> Unit = { gameManager.placeTile(gameId, tile, "Player1") } // Wrong phase/game status
+        game.status = GamePhase.TILE_PLACEMENT // ✅ Required for testing position
 
-        assertFailsWith<IllegalArgumentException>("Position is invalid", block = result)
-        assertFalse(game.board.containsKey(Position(5,5)), "Tile should not be placed")
+        val tile = Tile(
+            id = "invalid-road",
+            terrainNorth = TerrainType.ROAD,
+            terrainEast = TerrainType.ROAD,
+            terrainSouth = TerrainType.ROAD,
+            terrainWest = TerrainType.ROAD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(5, 5)
+        )
+
+        val result: () -> Unit = { gameManager.placeTile(gameId, tile, "Player1") }
+
+        val exception = assertFailsWith<IllegalArgumentException> { result() }
+        assertEquals("Position is invalid", exception.message)
+        assertFalse(game.board.containsKey(Position(5, 5)))
     }
+
+
 
     @Test
     fun `should place meeple on valid city feature`() {

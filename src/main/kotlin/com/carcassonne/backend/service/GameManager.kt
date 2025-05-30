@@ -8,14 +8,30 @@ import kotlin.random.Random
 class GameManager {
     private val games = mutableMapOf<String, GameState>()
 
-    fun getOrCreateGame(gameId: String): GameState =
-        games.getOrPut(gameId) { GameState(gameId) }
+
+    fun getOrCreateGame(gameId: String): GameState {
+        return games.getOrPut(gameId) {
+            val gameState = GameState(gameId)
+
+            // Create full shuffled deck
+            val fullDeck = createShuffledTileDeck(System.currentTimeMillis()).toMutableList()
+            gameState.tileDeck = fullDeck
+
+            // ✅ Take the first tile as the starting tile
+            val startingTile = fullDeck.removeAt(0).copy(position = Position(0, 0))
+            gameState.board[Position(0, 0)] = startingTile
+
+            println("✅ Starting tile placed: ${startingTile.id} at (0, 0)")
+
+            gameState
+        }
+    }
+
 
     // Function to create a shuffled tile deck
     fun createShuffledTileDeck(seed: Long): List<Tile> {
         val baseTiles = getUniqueTiles()
 
-        // Create full tile set with unique IDs based on count per base tile
         val fullDeck = baseTiles.flatMap { baseTile ->
             List(baseTile.count) { index ->
                 val uniqueId = "${baseTile.id}-$index"
@@ -23,32 +39,75 @@ class GameManager {
             }
         }
 
-        // Shuffle deck with fixed seed for reproducibility
-        return fullDeck.shuffled(Random(seed))
-    }
+        val shuffled = fullDeck.shuffled(Random(seed))
+        shuffled.forEach { println(" - ${it.id}") }
 
+        return shuffled
+    }
 
     fun drawTileForPlayer(gameId: String): Tile? {
         val game = games[gameId] ?: return null
 
+        println("🎲 Starting tile draw... Deck size: ${game.tileDeck.size}, Discarded: ${game.discardedTiles.size}")
+
+        // If deck is empty, try reshuffling discarded tiles
+        if (game.tileDeck.isEmpty() && game.discardedTiles.isNotEmpty()) {
+            println("♻️ Reshuffling discarded tiles...")
+            game.tileDeck.addAll(game.discardedTiles.shuffled())
+            game.discardedTiles.clear()
+        }
+
         while (game.tileDeck.isNotEmpty()) {
             val tile = game.drawTile()!!
             if (canPlaceTileAnywhere(game, tile)) {
+                println("✅ Playable tile drawn: ${tile.id}")
                 return tile
             } else {
-                println("Tile ${tile.id} has no valid placement and is discarded")
-                // Optional: track discarded tiles if you want
+                if (game.tileDeck.isEmpty()) {
+                    println("🗑️ Final tile ${tile.id} is unplayable and will NOT be added back.")
+                    // Don't add to discardedTiles
+                } else {
+                    println("🗑️ Tile ${tile.id} discarded (no valid position)")
+                    game.discardedTiles.add(tile)
+                }
             }
         }
 
-        // No tiles left that can be played
-        println("No more playable tiles in the deck")
-        game.finishGame() // or set status to SCORING if applicable
+        println("❌ No more playable tiles left.")
+        game.finishGame()
         return null
     }
 
 
     fun canPlaceTileAnywhere(game: GameState, tile: Tile): Boolean {
+        val potentialSpots = game.board.keys.flatMap { pos ->
+            listOf(
+                Position(pos.x + 1, pos.y),
+                Position(pos.x - 1, pos.y),
+                Position(pos.x, pos.y + 1),
+                Position(pos.x, pos.y - 1)
+            )
+        }.filter { it !in game.board.keys }.toSet()
+
+        println("🔍 Checking tile ${tile.id} for ${potentialSpots.size} possible positions...")
+
+        for (spot in potentialSpots) {
+            for (rotation in TileRotation.values()) {
+                val rotatedTile = tile.copy(tileRotation = rotation, position = spot)
+                val valid = isValidPosition(game, rotatedTile, spot, rotation)
+                println(" - Trying ${tile.id} at $spot with $rotation: $valid")
+                if (valid) {
+                    return true
+                }
+            }
+        }
+
+        println("❌ No valid placement found for ${tile.id}")
+        return false
+    }
+
+
+ /*   fun canPlaceTileAnywhere(game: GameState, tile: Tile): Boolean {
         val terrainMap = tile.getRotatedTerrains()
 
         // Try placing the tile at every empty spot next to existing tiles
@@ -72,7 +131,7 @@ class GameManager {
 
         return false
     }
-
+*/
      /*
      * fun calculatePoints(gameId: String): GameState?
      * {
@@ -577,13 +636,23 @@ class GameManager {
     }
 
     fun createGameWithHost(gameId: String, hostName: String): GameState {
-        // Datatype Player to String ?
-        val host = Player(hostName,0,8,0)
+        val host = Player(hostName, 0, 8, 0)
         val game = GameState(gameId)
-        game.players.add(host) //host übergabe
+
+        // ✅ Initialize and shuffle full tile deck
+        val fullDeck = createShuffledTileDeck(System.currentTimeMillis()).toMutableList()
+        game.tileDeck = fullDeck
+
+        // ✅ Take one tile as starting tile
+        val startingTile = fullDeck.removeAt(0).copy(position = Position(0, 0))
+        game.board[Position(0, 0)] = startingTile
+        println("✅ Starting tile placed: ${startingTile.id} at (0, 0)")
+
+        game.players.add(host)
         games[gameId] = game
         return game
     }
+
 
     fun getUniqueTiles(): List<Tile> {
         // Save all 24 unique base tiles in a list for tile deck generation
