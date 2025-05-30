@@ -17,11 +17,10 @@ class GameManager {
             val fullDeck = createShuffledTileDeck(System.currentTimeMillis()).toMutableList()
             gameState.tileDeck = fullDeck
 
-            // ✅ Take the first tile as the starting tile
             val startingTile = fullDeck.removeAt(0).copy(position = Position(0, 0))
             gameState.board[Position(0, 0)] = startingTile
 
-            println("✅ Starting tile placed: ${startingTile.id} at (0, 0)")
+            println(" Starting tile placed: ${startingTile.id} at (0, 0)")
 
             gameState
         }
@@ -48,11 +47,11 @@ class GameManager {
     fun drawTileForPlayer(gameId: String): Tile? {
         val game = games[gameId] ?: return null
 
-        println("🎲 Starting tile draw... Deck size: ${game.tileDeck.size}, Discarded: ${game.discardedTiles.size}")
+        println(" Starting tile draw... Deck size: ${game.tileDeck.size}, Discarded: ${game.discardedTiles.size}")
 
         // If deck is empty, try reshuffling discarded tiles
         if (game.tileDeck.isEmpty() && game.discardedTiles.isNotEmpty()) {
-            println("♻️ Reshuffling discarded tiles...")
+            println(" Reshuffling discarded tiles...")
             game.tileDeck.addAll(game.discardedTiles.shuffled())
             game.discardedTiles.clear()
         }
@@ -60,7 +59,7 @@ class GameManager {
         while (game.tileDeck.isNotEmpty()) {
             val tile = game.drawTile()!!
             if (canPlaceTileAnywhere(game, tile)) {
-                println("✅ Playable tile drawn: ${tile.id}")
+                println(" Playable tile drawn: ${tile.id}")
                 return tile
             } else {
                 if (game.tileDeck.isEmpty()) {
@@ -73,7 +72,7 @@ class GameManager {
             }
         }
 
-        println("❌ No more playable tiles left.")
+        println(" No more playable tiles left.")
         game.finishGame()
         return null
     }
@@ -102,7 +101,7 @@ class GameManager {
             }
         }
 
-        println("❌ No valid placement found for ${tile.id}")
+        println(" No valid placement found for ${tile.id}")
         return false
     }
 
