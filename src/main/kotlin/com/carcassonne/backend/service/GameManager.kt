@@ -88,7 +88,7 @@ class GameManager {
             )
         }.filter { it !in game.board.keys }.toSet()
 
-        println("🔍 Checking tile ${tile.id} for ${potentialSpots.size} possible positions...")
+        println(" Checking tile ${tile.id} for ${potentialSpots.size} possible positions...")
 
         for (spot in potentialSpots) {
             for (rotation in TileRotation.values()) {
