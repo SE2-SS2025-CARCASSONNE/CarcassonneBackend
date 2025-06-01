@@ -20,7 +20,6 @@ class GameManager {
             val startingTile = fullDeck.removeAt(0).copy(position = Position(0, 0))
             gameState.board[Position(0, 0)] = startingTile
 
-            println(" Starting tile placed: ${startingTile.id} at (0, 0)")
 
             gameState
         }
@@ -63,10 +62,10 @@ class GameManager {
                 return tile
             } else {
                 if (game.tileDeck.isEmpty()) {
-                    println("🗑️ Final tile ${tile.id} is unplayable and will NOT be added back.")
+                    println(" Final tile ${tile.id} is unplayable and will NOT be added back.")
                     // Don't add to discardedTiles
                 } else {
-                    println("🗑️ Tile ${tile.id} discarded (no valid position)")
+                    println(" Tile ${tile.id} discarded (no valid position)")
                     game.discardedTiles.add(tile)
                 }
             }
