@@ -2,6 +2,7 @@ package com.carcassonne.backend.controller
 
 import com.carcassonne.backend.model.GameMessage
 import com.carcassonne.backend.model.GamePhase
+import com.carcassonne.backend.model.MeeplePosition
 import com.carcassonne.backend.repository.GameRepository
 import com.carcassonne.backend.service.GameManager
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -75,6 +76,41 @@ class GameWebSocketController(
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
                 }
             }
+
+            "place_meeple" -> {
+                val meeple = msg.meeple ?: run {
+                    val error = mapOf(
+                        "type" to "error",
+                        "message" to "Invalid meeple placement data"
+                    )
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
+                    return
+                }
+
+                val game = gameManager.placeMeeple(
+                    gameId = msg.gameId,
+                    playerId = msg.player,
+                    meeple = meeple,
+                    position = meeple.position!!
+                )
+
+                if (game != null) {
+                    val payload = mapOf(
+                        "type" to "meeple_placed",
+                        "meeple" to meeple,
+                        "player" to msg.player,
+                        "nextPlayer" to game.getCurrentPlayer() //TODO: Michael: ev. nicht notwendig, abstimmen mit Scoring-Logik
+                    )
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
+                } else {
+                    val error = mapOf(
+                        "type" to "error",
+                        "message" to "Invalid meeple placement or not your turn"
+                    )
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
+                }
+            }
+
             "start_game" -> {
                 println(">>> [Backend] Received start_game for ${msg.gameId}")
 

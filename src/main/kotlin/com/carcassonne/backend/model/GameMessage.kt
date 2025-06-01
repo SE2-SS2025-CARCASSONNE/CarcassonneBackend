@@ -3,5 +3,6 @@ data class GameMessage(
     val type: String,        // "join_game", "place_tile"
     val gameId: String,
     val player: String,  // TODO: Spieler ID rename
-    val tile: Tile? = null
+    val tile: Tile? = null,
+    val meeple: Meeple? = null
 )
