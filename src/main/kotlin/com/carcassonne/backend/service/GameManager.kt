@@ -589,7 +589,6 @@ class GameManager {
 
         val startingTile = fullDeck.removeAt(0).copy(position = Position(0, 0))
         game.board[Position(0, 0)] = startingTile
-        println("Starting tile placed: ${startingTile.id} at (0, 0)")
 
         game.players.add(host)
         games[gameId] = game
