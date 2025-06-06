@@ -816,4 +816,55 @@ class GameManagerTest {
         }
         assertEquals("No players to determine winner", exception.message)
     }
+    @Test
+    fun `tile count per type matches definition in base tiles`() {
+        val baseTiles = gameManager.getUniqueTiles()
+        val fullDeck = gameManager.createShuffledTileDeck(seed = 777L)
+
+        // Extract base ID by removing the unique suffix (e.g., "tile-a-0" -> "tile-a")
+        val grouped = fullDeck.groupingBy { it.id.substringBeforeLast("-") }.eachCount()
+
+        baseTiles.forEach { baseTile ->
+            val expected = baseTile.count
+            val actual = grouped[baseTile.id] ?: 0
+            assertEquals(expected, actual, "Mismatch in tile count for tile ${baseTile.id}")
+        }
+    }
+    @Test
+    fun `drawTile reshuffles discarded tiles if deck is empty`() {
+        val gameId = "reshuffle-test"
+        val game = gameManager.getOrCreateGame(gameId)
+
+        // Place a starting tile at (0, 0)
+        game.board[Position(0, 0)] = Tile(
+            id = "start-tile",
+            terrainNorth = TerrainType.ROAD,
+            terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(0, 0)
+        )
+
+        // This tile is compatible to be placed east of (0, 0) (FIELD-to-FIELD)
+        val tile = Tile(
+            id = "discarded-tile-1",
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH
+        )
+
+        // Simulate empty deck and discarded pile
+        game.tileDeck.clear()
+        game.discardedTiles.clear()
+        game.discardedTiles.add(tile)
+
+        val drawnTile = gameManager.drawTileForPlayer(gameId)
+
+        assertNotNull(drawnTile, "Expected a playable tile to be drawn from reshuffled discarded tiles")
+        assertEquals(tile.id, drawnTile?.id, "Expected the reshuffled tile to match the discarded one")
+    }
+
 }
