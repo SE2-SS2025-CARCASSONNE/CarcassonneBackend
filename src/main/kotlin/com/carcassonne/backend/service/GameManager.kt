@@ -153,6 +153,10 @@ class GameManager {
                      // 6. Punkte vergeben & Meeples entfernen
                      awardPoints(game, involvedMeeples, featureTiles.size, featureTypeString)
                      game.meeplesOnBoard.removeAll(involvedMeeples)
+                     game.nextPlayer()
+                     if(game.status == GamePhase.SCORING) {
+                         game.status = GamePhase.TILE_PLACEMENT
+                     }
                  }
              }
          }
