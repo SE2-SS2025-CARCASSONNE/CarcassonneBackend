@@ -507,7 +507,6 @@ class GameManager {
 
         // Nächster Spielstatus
         game.status = GamePhase.SCORING //Mike: Ist das richtig oder müssen wir auf SCORING? --> Scoring lt. Bespr. mit Jakob/Felix 27.04.2025
-        game.nextPlayer() //TODO: Mike: Check mit Jakob/Felix, ob ich überhaupt auf nextPlayer stellen darf!
 
         return game
     }
