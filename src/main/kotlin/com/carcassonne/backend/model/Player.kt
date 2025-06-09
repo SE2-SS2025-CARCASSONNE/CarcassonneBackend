@@ -4,6 +4,6 @@ data class Player(
     val id: String,
     var score: Int,
     val remainingMeeple: Int,
-    val user_id: Int?
+    val user_id: Int? //TODO Refactorn
 )
 
