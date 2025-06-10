@@ -95,10 +95,13 @@ class GameWebSocketController(
                 )
 
                 if (game != null) {
+                    val placingPlayer = game.players.find { it.id == msg.player }
+
                     val payload = mapOf(
                         "type" to "meeple_placed",
                         "meeple" to meeple,
                         "player" to msg.player,
+                        "remainingMeeple" to placingPlayer?.remainingMeeple,
                         "nextPlayer" to game.getCurrentPlayer() //TODO: Michael: ev. nicht notwendig, abstimmen mit Scoring-Logik
                     )
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)

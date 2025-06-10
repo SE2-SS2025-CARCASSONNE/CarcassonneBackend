@@ -505,6 +505,9 @@ class GameManager {
         meeple.position = position
         game.meeplesOnBoard.add(meeple)
 
+        // Meeple-Anzahl aktualisieren
+        currentPlayer.remainingMeeple -= 1
+
         // Nächster Spielstatus
         game.status = GamePhase.SCORING //Mike: Ist das richtig oder müssen wir auf SCORING? --> Scoring lt. Bespr. mit Jakob/Felix 27.04.2025
 
@@ -579,7 +582,7 @@ class GameManager {
     }
 
     fun createGameWithHost(gameId: String, hostName: String): GameState {
-        val host = Player(hostName, 0, 8, 0)
+        val host = Player(hostName, 0, 7, 0)
         val game = GameState(gameId)
 
         val fullDeck = createShuffledTileDeck(System.currentTimeMillis()).toMutableList()
