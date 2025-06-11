@@ -261,7 +261,6 @@ class GameManager {
             throw IllegalStateException("Game is not in tile placement phase")
         }
         val currentPlayerId = game.getCurrentPlayer()
-        // currentPlayer.id != player.id (Datatype Player to String
         if (currentPlayerId != playerId) {
             throw IllegalStateException("Not player's turn")
         }
@@ -293,7 +292,6 @@ class GameManager {
             }
         }
 
-        //game.nextPlayer() move to endTurn logic
         return game
     }
 
