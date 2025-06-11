@@ -67,7 +67,7 @@ class GameWebSocketController(
                         "type" to "board_update",
                         "tile" to msg.tile,
                         "player" to msg.player,
-                        "nextPlayer" to game.getCurrentPlayer()
+//                        "nextPlayer" to game.getCurrentPlayer()
                     )
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
                 } else {
