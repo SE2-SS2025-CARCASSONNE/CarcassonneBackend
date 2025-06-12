@@ -18,6 +18,9 @@ class GameWebSocketController(
 
     @MessageMapping("/game/send") // from client to /app/game/send
     fun handle(@Payload msg: GameMessage) {
+        println(" Received message type: ${msg.type}")
+        println(" Payload: $msg")
+
         when (msg.type) {
             "join_game" -> {
                 val game = gameManager.getOrCreateGame(msg.gameId)
@@ -46,7 +49,7 @@ class GameWebSocketController(
                 )
             }
 
-
+/*
             "place_tile" -> {
                 val tile = msg.tile
                 val x = tile?.position?.x
@@ -59,11 +62,24 @@ class GameWebSocketController(
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
                     return
                 }
+
                 val position = Pair(x, y)
                 // call to placeTile method returns the updated game state
+
+
+
                 val game = gameManager.placeTile(msg.gameId, tile, msg.player)
+
+
                 if (game != null) {
+
+
+
+
+
+
                     val payload = mapOf(
+
                         "type" to "board_update",
                         "tile" to msg.tile,
                         "player" to msg.player,
@@ -74,7 +90,8 @@ class GameWebSocketController(
                     val error = mapOf("type" to "error", "message" to "Invalid move or not your turn")
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
                 }
-            }
+            }*/
+
             "start_game" -> {
                 println(">>> [Backend] Received start_game for ${msg.gameId}")
 
@@ -102,9 +119,15 @@ class GameWebSocketController(
                 val drawnTile = gameManager.drawTileForPlayer(msg.gameId)
 
                 if (drawnTile != null) {
+                    val validPlacements = gameManager.getAllValidPositions(msg.gameId!!, drawnTile)
+                    println("Valid placements for ${drawnTile.id}: $validPlacements")
+                    val validPositions = validPlacements.map { it.first }
+
                     val payload = mapOf(
                         "type" to "TILE_DRAWN",
-                        "tile" to drawnTile
+                        "tile" to drawnTile,
+                        "validPositions" to validPositions
+
                     )
                     println(">>> Sending TILE_DRAWN to /topic/game/${msg.gameId}")
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
@@ -116,6 +139,24 @@ class GameWebSocketController(
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
                 }
             }
+            "place_tile" -> {
+                try {
+                    val game = gameManager.placeTile(msg.gameId!!, msg.tile!!, msg.player!!)
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", mapOf(
+                        "type" to "board_update",
+                        "tile" to msg.tile,
+                        "player" to mapOf("id" to msg.player)
+                    ))
+                } catch (e: Exception) {
+                    println("ERROR in place_tile: ${e.message}")
+                    e.printStackTrace()
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", mapOf(
+                        "type" to "error",
+                        "message" to e.message
+                    ))
+                }
+            }
+
 
             "end_game" -> {
                 val game = gameManager.getOrCreateGame(msg.gameId)

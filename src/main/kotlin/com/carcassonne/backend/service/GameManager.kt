@@ -47,6 +47,8 @@ class GameManager {
     fun drawTileForPlayer(gameId: String): Tile? {
         val game = games[gameId] ?: return null
 
+
+
         println(" Starting tile draw... Deck size: ${game.tileDeck.size}, Discarded: ${game.discardedTiles.size}")
 
         // If deck is empty, try reshuffling discarded tiles
@@ -60,13 +62,15 @@ class GameManager {
             val tile = game.drawTile()!!
             if (canPlaceTileAnywhere(game, tile)) {
                 println(" Playable tile drawn: ${tile.id}")
+                val validPositions = getAllValidPositions(gameId, tile)
+                println("Valid placements for ${tile.id}: $validPositions")
                 return tile
             } else {
                 if (game.tileDeck.isEmpty()) {
-                    println("🗑️ Final tile ${tile.id} is unplayable and will NOT be added back.")
+                    println("️ Final tile ${tile.id} is unplayable and will NOT be added back.")
                     // Don't add to discardedTiles
                 } else {
-                    println("🗑️ Tile ${tile.id} discarded (no valid position)")
+                    println(" Tile ${tile.id} discarded (no valid position)")
                     game.discardedTiles.add(tile)
                 }
             }
@@ -302,6 +306,32 @@ class GameManager {
      * Helper method to determine validity of position in the context of tile placement
      * returns true if tile can be placed at the desired position
      */
+    fun getAllValidPositions(gameId: String, tile: Tile): List<Triple<Position, TileRotation, Boolean>> {
+        val game = games[gameId] ?: throw IllegalArgumentException("Game not found")
+        val validPlacements = mutableListOf<Triple<Position, TileRotation, Boolean>>()
+
+        val potentialSpots = game.board.keys.flatMap { pos ->
+            listOf(
+                Position(pos.x + 1, pos.y),
+                Position(pos.x - 1, pos.y),
+                Position(pos.x, pos.y + 1),
+                Position(pos.x, pos.y - 1)
+            )
+        }.filter { it !in game.board.keys }.toSet()
+
+        for (spot in potentialSpots) {
+            for (rotation in TileRotation.values()) {
+                val rotatedTile = tile.copy(tileRotation = rotation, position = spot)
+                val isValid = isValidPosition(game, rotatedTile, spot, rotation)
+                if (isValid) {
+                    validPlacements.add(Triple(spot, rotation, true))
+                }
+            }
+        }
+
+        return validPlacements
+    }
+
     private fun isValidPosition(game: GameState, tile: Tile, position: Position?, tileRotation: TileRotation): Boolean {
         if (position == null){
             throw IllegalArgumentException("Position can not be null")
