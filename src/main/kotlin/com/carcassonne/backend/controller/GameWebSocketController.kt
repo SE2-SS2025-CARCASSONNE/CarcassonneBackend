@@ -84,7 +84,6 @@ class GameWebSocketController(
 
             "start_game" -> {
                 println(">>> [Backend] Received start_game for ${msg.gameId}")
-
                 val game = gameManager.getOrCreateGame(msg.gameId)
                 game.status = GamePhase.TILE_PLACEMENT
 
@@ -103,6 +102,29 @@ class GameWebSocketController(
                 )
                 println(">>> [Backend] Sending game_started to /topic/game/${msg.gameId} with $payload")
                 messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
+
+                val startTile = game.board[Position(0, 0)]
+                    ?: throw IllegalStateException("Starting tile missing in game ${msg.gameId}")
+
+                val tilePayload = mapOf(
+                    "id"           to startTile.id,
+                    "terrainNorth" to startTile.terrainNorth,
+                    "terrainEast"  to startTile.terrainEast,
+                    "terrainSouth" to startTile.terrainSouth,
+                    "terrainWest"  to startTile.terrainWest,
+                    "tileRotation" to startTile.tileRotation.name,
+                    "hasMonastery" to startTile.hasMonastery,
+                    "hasShield"    to startTile.hasShield,
+                    "position"     to mapOf("x" to 0, "y" to 0)
+                )
+                val boardUpdate = mapOf(
+                    "type"   to "board_update",
+                    "tile"   to tilePayload,
+                    "player" to mapOf("id" to game.players.first().id)
+                )
+                println(">>> [Backend] Sending initial board_update: $boardUpdate")
+                messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", boardUpdate)
+                messagingTemplate.convertAndSendToUser(msg.player, "/queue/private", boardUpdate)
             }
 
             "DRAW_TILE" -> {
@@ -130,25 +152,6 @@ class GameWebSocketController(
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
                 }
             }
-
-            /*
-            "place_tile" -> {
-                try {
-                    val game = gameManager.placeTile(msg.gameId!!, msg.tile!!, msg.player!!)
-                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", mapOf(
-                        "type" to "board_update",
-                        "tile" to msg.tile,
-                        "player" to mapOf("id" to msg.player)
-                    ))
-                } catch (e: Exception) {
-                    println("ERROR in place_tile: ${e.message}")
-                    e.printStackTrace()
-                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", mapOf(
-                        "type" to "error",
-                        "message" to e.message
-                    ))
-                }
-            }*/
 
             "end_game" -> {
                 val game = gameManager.getOrCreateGame(msg.gameId)

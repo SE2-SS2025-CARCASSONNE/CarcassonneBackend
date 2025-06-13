@@ -17,11 +17,19 @@ class GameManager {
             val fullDeck = createShuffledTileDeck(System.currentTimeMillis()).toMutableList()
             gameState.tileDeck = fullDeck
 
-            val startingTile = fullDeck.removeAt(0).copy(position = Position(0, 0))
-            gameState.board[Position(0, 0)] = startingTile
+            val startId = "tile-d-0"
+            val tileId = fullDeck.indexOfFirst { it.id == startId }
+            val startTile = if (tileId >= 0) {
+                fullDeck.removeAt(tileId)
+            } else {
+                println("Starting tile $startId not in deck, using first tile instead")
+                fullDeck.removeAt(0)
+            }
 
-            println(" Starting tile placed: ${startingTile.id} at (0, 0)")
+            val placedStartTile = startTile.copy(position = Position(0, 0))
+            gameState.board[Position(0, 0)] = placedStartTile
 
+            println(" Starting tile placed: ${startTile.id} at (0, 0)")
             gameState
         }
     }
