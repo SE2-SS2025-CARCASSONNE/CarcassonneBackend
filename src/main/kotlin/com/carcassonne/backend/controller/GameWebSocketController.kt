@@ -2,6 +2,7 @@ package com.carcassonne.backend.controller
 
 import com.carcassonne.backend.model.GameMessage
 import com.carcassonne.backend.model.GamePhase
+import com.carcassonne.backend.model.Position
 import com.carcassonne.backend.repository.GameRepository
 import com.carcassonne.backend.service.GameManager
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -133,15 +134,21 @@ class GameWebSocketController(
 
                 if (drawnTile != null) {
                     val validPlacements = gameManager.getAllValidPositions(msg.gameId!!, drawnTile)
-                    println("Valid placements for ${drawnTile.id}: $validPlacements")
-                    val validPositions = validPlacements.map { it.first }
+
+                    val validPlacementsJson = validPlacements.map { (pos, rotation, _) ->
+                        mapOf(
+                            "position" to mapOf("x" to pos.x, "y" to pos.y),
+                            "rotation" to rotation.name
+                        )
+                    }
 
                     val payload = mapOf(
                         "type" to "TILE_DRAWN",
                         "tile" to drawnTile,
-                        "validPositions" to validPositions
-
+                        "validPlacements" to validPlacementsJson
                     )
+
+                    println("Valid placements for ${drawnTile.id}: $validPlacementsJson")
                     println(">>> Sending TILE_DRAWN to /topic/game/${msg.gameId}")
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
                 } else {
