@@ -95,8 +95,8 @@ class GameManager {
             listOf(
                 Position(pos.x + 1, pos.y),
                 Position(pos.x - 1, pos.y),
-                Position(pos.x, pos.y + 1),
-                Position(pos.x, pos.y - 1)
+                Position(pos.x, pos.y - 1),
+                Position(pos.x, pos.y + 1)
             )
         }.filter { it !in game.board.keys }.toSet()
 
@@ -322,8 +322,8 @@ class GameManager {
             listOf(
                 Position(pos.x + 1, pos.y),
                 Position(pos.x - 1, pos.y),
-                Position(pos.x, pos.y + 1),
-                Position(pos.x, pos.y - 1)
+                Position(pos.x, pos.y - 1),
+                Position(pos.x, pos.y + 1)
             )
         }.filter { it !in game.board.keys }.toSet()
 
@@ -348,9 +348,9 @@ class GameManager {
         val terrains = rotatedTile.getRotatedTerrains()
 
         val neighbors = mapOf(
-            Position(position.x, position.y + 1) to "N",
+            Position(position.x, position.y - 1) to "N",
             Position(position.x + 1, position.y) to "E",
-            Position(position.x, position.y - 1) to "S",
+            Position(position.x, position.y + 1) to "S",
             Position(position.x - 1, position.y) to "W"
         )
 
@@ -407,9 +407,9 @@ class GameManager {
     }
 
     private fun getNeighborPosition(position: Position, direction: String): Position = when (direction) {
-        "N" -> Position(position.x, position.y + 1)
+        "N" -> Position(position.x, position.y - 1)
         "E" -> Position(position.x + 1, position.y)
-        "S" -> Position(position.x, position.y - 1)
+        "S" -> Position(position.x, position.y + 1)
         "W" -> Position(position.x - 1, position.y)
         else -> position
     }
@@ -442,9 +442,9 @@ class GameManager {
             cityTiles.add(pos)
 
             val neighborOffsets = mapOf(
-                "N" to Position(pos.x, pos.y + 1),
+                "N" to Position(pos.x, pos.y - 1),
                 "E" to Position(pos.x + 1, pos.y),
-                "S" to Position(pos.x, pos.y - 1),
+                "S" to Position(pos.x, pos.y + 1),
                 "W" to Position(pos.x - 1, pos.y)
             )
 
@@ -580,9 +580,9 @@ class GameManager {
 
             // Prüfe angrenzende Tiles basierend auf der Verbindung und Rotation
             val neighborOffsets = mapOf(
-                "N" to Position(currentPos.x, currentPos.y + 1),
+                "N" to Position(currentPos.x, currentPos.y - 1),
                 "E" to Position(currentPos.x + 1, currentPos.y),
-                "S" to Position(currentPos.x, currentPos.y - 1),
+                "S" to Position(currentPos.x, currentPos.y + 1),
                 "W" to Position(currentPos.x - 1, currentPos.y)
             )
 
