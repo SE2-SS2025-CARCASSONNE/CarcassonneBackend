@@ -23,7 +23,7 @@ class GameRestController(
     ): ResponseEntity<GameState> {
         println(">>> [DEBUG] GET /api/game/$gameId by ${user.username}")
 
-        val game = gameManager.getOrCreateGame(gameId)
+        val game = gameManager.getGame(gameId)
         return ResponseEntity.ok(game)
     }
 }

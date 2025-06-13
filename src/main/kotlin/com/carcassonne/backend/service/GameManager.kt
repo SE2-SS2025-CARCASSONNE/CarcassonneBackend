@@ -8,31 +8,33 @@ import kotlin.random.Random
 class GameManager {
     private val games = mutableMapOf<String, GameState>()
 
+    fun createGameWithHost(gameId: String, hostName: String): GameState {
+        val host = Player(hostName, 0, 8, 0)
+        val game = GameState(gameId)
 
-    fun getOrCreateGame(gameId: String): GameState {
-        return games.getOrPut(gameId) {
-            val gameState = GameState(gameId)
+        val fullDeck = createShuffledTileDeck(System.currentTimeMillis()).toMutableList()
 
-            // Create full shuffled deck
-            val fullDeck = createShuffledTileDeck(System.currentTimeMillis()).toMutableList()
-            gameState.tileDeck = fullDeck
-
-            val startId = "tile-d-0"
-            val tileId = fullDeck.indexOfFirst { it.id == startId }
-            val startTile = if (tileId >= 0) {
-                fullDeck.removeAt(tileId)
-            } else {
-                println("Starting tile $startId not in deck, using first tile instead")
-                fullDeck.removeAt(0)
-            }
-
-            val placedStartTile = startTile.copy(position = Position(0, 0))
-            gameState.board[Position(0, 0)] = placedStartTile
-
-            println(" Starting tile placed: ${startTile.id} at (0, 0)")
-            gameState
+        val index = fullDeck.indexOfFirst { it.id == "tile-d-0" }
+        val startTile = if (index >= 0) {
+            fullDeck.removeAt(index)
+        } else {
+            println("Start tile tile-d-0 not found in deck, using first tile instead")
+            fullDeck.removeAt(0)
         }
+
+        game.board[Position(0, 0)] = startTile.copy(position = Position(0, 0))
+        println("New game $gameId: start tile ${startTile.id} placed at (0,0)")
+
+        fullDeck.shuffle()
+        game.tileDeck = fullDeck
+
+        game.players.add(host)
+        games[gameId] = game
+        return game
     }
+
+    fun getGame(gameId: String): GameState =
+        games[gameId] ?: throw IllegalArgumentException("Game $gameId not found")
 
 
     // Function to create a shuffled tile deck
@@ -617,23 +619,6 @@ class GameManager {
                     game.board[meepleTilePosition]?.getTerrainType(direction) == featureType
         }
     }
-
-    fun createGameWithHost(gameId: String, hostName: String): GameState {
-        val host = Player(hostName, 0, 8, 0)
-        val game = GameState(gameId)
-
-        val fullDeck = createShuffledTileDeck(System.currentTimeMillis()).toMutableList()
-        game.tileDeck = fullDeck
-
-        val startingTile = fullDeck.removeAt(0).copy(position = Position(0, 0))
-        game.board[Position(0, 0)] = startingTile
-        println(" Starting tile placed: ${startingTile.id} at (0, 0)")
-
-        game.players.add(host)
-        games[gameId] = game
-        return game
-    }
-
 
     fun getUniqueTiles(): List<Tile> {
         // Save all 24 unique base tiles in a list for tile deck generation

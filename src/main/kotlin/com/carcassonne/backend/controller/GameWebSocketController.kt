@@ -24,7 +24,7 @@ class GameWebSocketController(
 
         when (msg.type) {
             "join_game" -> {
-                val game = gameManager.getOrCreateGame(msg.gameId)
+                val game = gameManager.getGame(msg.gameId)
 
                 //Always generate and send updated list
                 val playerAlreadyExists = game.findPlayerById(msg.player) != null
@@ -106,7 +106,7 @@ class GameWebSocketController(
 
             "start_game" -> {
                 println(">>> [Backend] Received start_game for ${msg.gameId}")
-                val game = gameManager.getOrCreateGame(msg.gameId)
+                val game = gameManager.getGame(msg.gameId)
                 game.status = GamePhase.TILE_PLACEMENT
 
                 // Update DB
@@ -182,7 +182,7 @@ class GameWebSocketController(
             }
 
             "end_game" -> {
-                val game = gameManager.getOrCreateGame(msg.gameId)
+                val game = gameManager.getGame(msg.gameId)
 
                 if (game.status != GamePhase.FINISHED) {
                     println(">>> Game is not in FINISHED phase")
