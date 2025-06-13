@@ -48,6 +48,27 @@ class GameWebSocketController(
                     "/queue/private",
                     payload
                 )
+
+                game.board.forEach { (position, tile) ->
+                    val tilePayload = mapOf(
+                        "id" to tile.id,
+                        "terrainNorth" to tile.terrainNorth,
+                        "terrainEast" to tile.terrainEast,
+                        "terrainSouth" to tile.terrainSouth,
+                        "terrainWest" to tile.terrainWest,
+                        "tileRotation" to tile.tileRotation.name,
+                        "hasMonastery" to tile.hasMonastery,
+                        "hasShield" to tile.hasShield,
+                        "position" to mapOf("x" to position.x, "y" to position.y)
+                    )
+                    val boardUpdate = mapOf(
+                        "type" to "board_update",
+                        "tile" to tilePayload,
+                        "player" to mapOf("id" to msg.player)
+                    )
+                    messagingTemplate.convertAndSendToUser(msg.player, "/queue/private", boardUpdate)
+                }
+
             }
 
             "place_tile" -> {
