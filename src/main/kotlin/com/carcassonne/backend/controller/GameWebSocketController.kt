@@ -2,6 +2,7 @@ package com.carcassonne.backend.controller
 
 import com.carcassonne.backend.model.GameMessage
 import com.carcassonne.backend.model.GamePhase
+import com.carcassonne.backend.model.Position
 import com.carcassonne.backend.repository.GameRepository
 import com.carcassonne.backend.service.GameManager
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -18,9 +19,12 @@ class GameWebSocketController(
 
     @MessageMapping("/game/send") // from client to /app/game/send
     fun handle(@Payload msg: GameMessage) {
+        println(" Received message type: ${msg.type}")
+        println(" Payload: $msg")
+
         when (msg.type) {
             "join_game" -> {
-                val game = gameManager.getOrCreateGame(msg.gameId)
+                val game = gameManager.getGame(msg.gameId)
 
                 //Always generate and send updated list
                 val playerAlreadyExists = game.findPlayerById(msg.player) != null
@@ -44,41 +48,65 @@ class GameWebSocketController(
                     "/queue/private",
                     payload
                 )
-            }
 
+                game.board.forEach { (position, tile) ->
+                    val tilePayload = mapOf(
+                        "id" to tile.id,
+                        "terrainNorth" to tile.terrainNorth,
+                        "terrainEast" to tile.terrainEast,
+                        "terrainSouth" to tile.terrainSouth,
+                        "terrainWest" to tile.terrainWest,
+                        "tileRotation" to tile.tileRotation.name,
+                        "hasMonastery" to tile.hasMonastery,
+                        "hasShield" to tile.hasShield,
+                        "position" to mapOf("x" to position.x, "y" to position.y)
+                    )
+                    val boardUpdate = mapOf(
+                        "type" to "board_update",
+                        "tile" to tilePayload,
+                        "player" to mapOf("id" to msg.player)
+                    )
+                    messagingTemplate.convertAndSendToUser(msg.player, "/queue/private", boardUpdate)
+                }
+
+            }
 
             "place_tile" -> {
-                val tile = msg.tile
-                val x = tile?.position?.x
-                val y = tile?.position?.y
-                if (tile == null || x == null || y == null) {
-                    val error = mapOf(
-                        "type" to "error",
-                        "message" to "Invalid tile placement data"
-                    )
-                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
-                    return
-                }
-                val position = Pair(x, y)
-                // call to placeTile method returns the updated game state
-                val game = gameManager.placeTile(msg.gameId, tile, msg.player)
-                if (game != null) {
+                try {
+                    val game = gameManager.placeTile(msg.gameId!!, msg.tile!!, msg.player!!)
+                    val tile = msg.tile!!
+                    val position  = tile.position!!
+
                     val payload = mapOf(
-                        "type" to "board_update",
-                        "tile" to msg.tile,
-                        "player" to msg.player,
-                        "nextPlayer" to game.getCurrentPlayer()
+                        "id" to tile.id,
+                        "terrainNorth" to tile.terrainNorth,
+                        "terrainEast" to tile.terrainEast,
+                        "terrainSouth" to tile.terrainSouth,
+                        "terrainWest" to tile.terrainWest,
+                        "tileRotation" to tile.tileRotation.name,
+                        "hasMonastery" to tile.hasMonastery,
+                        "hasShield" to tile.hasShield,
+                        "position" to mapOf("x" to position.x, "y" to position.y)
                     )
-                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
-                } else {
-                    val error = mapOf("type" to "error", "message" to "Invalid move or not your turn")
-                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
+
+                    val boardUpdatePayload = mapOf(
+                        "type" to "board_update",
+                        "tile" to payload,
+                        "player" to mapOf("id" to msg.player)
+                    )
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", boardUpdatePayload)
+                }
+                catch(e: Exception) {
+                    messagingTemplate.convertAndSend(
+                        "/topic/game/${msg.gameId}",
+                        mapOf("type" to "error", "message" to e.message)
+                    )
                 }
             }
+
             "start_game" -> {
                 println(">>> [Backend] Received start_game for ${msg.gameId}")
-
-                val game = gameManager.getOrCreateGame(msg.gameId)
+                val game = gameManager.getGame(msg.gameId)
                 game.status = GamePhase.TILE_PLACEMENT
 
                 // Update DB
@@ -96,16 +124,52 @@ class GameWebSocketController(
                 )
                 println(">>> [Backend] Sending game_started to /topic/game/${msg.gameId} with $payload")
                 messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
+
+                val startTile = game.board[Position(0, 0)]
+                    ?: throw IllegalStateException("Starting tile missing in game ${msg.gameId}")
+
+                val tilePayload = mapOf(
+                    "id"           to startTile.id,
+                    "terrainNorth" to startTile.terrainNorth,
+                    "terrainEast"  to startTile.terrainEast,
+                    "terrainSouth" to startTile.terrainSouth,
+                    "terrainWest"  to startTile.terrainWest,
+                    "tileRotation" to startTile.tileRotation.name,
+                    "hasMonastery" to startTile.hasMonastery,
+                    "hasShield"    to startTile.hasShield,
+                    "position"     to mapOf("x" to 0, "y" to 0)
+                )
+                val boardUpdate = mapOf(
+                    "type"   to "board_update",
+                    "tile"   to tilePayload,
+                    "player" to mapOf("id" to game.players.first().id)
+                )
+                println(">>> [Backend] Sending initial board_update: $boardUpdate")
+                messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", boardUpdate)
+                messagingTemplate.convertAndSendToUser(msg.player, "/queue/private", boardUpdate)
             }
+
             "DRAW_TILE" -> {
                 println(">>> [Backend] Handling DRAW_TILE for ${msg.player} in game ${msg.gameId}")
                 val drawnTile = gameManager.drawTileForPlayer(msg.gameId)
 
                 if (drawnTile != null) {
+                    val validPlacements = gameManager.getAllValidPositions(msg.gameId!!, drawnTile)
+
+                    val validPlacementsJson = validPlacements.map { (pos, rotation, _) ->
+                        mapOf(
+                            "position" to mapOf("x" to pos.x, "y" to pos.y),
+                            "rotation" to rotation.name
+                        )
+                    }
+
                     val payload = mapOf(
                         "type" to "TILE_DRAWN",
-                        "tile" to drawnTile
+                        "tile" to drawnTile,
+                        "validPlacements" to validPlacementsJson
                     )
+
+                    println("Valid placements for ${drawnTile.id}: $validPlacementsJson")
                     println(">>> Sending TILE_DRAWN to /topic/game/${msg.gameId}")
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
                 } else {
@@ -118,7 +182,7 @@ class GameWebSocketController(
             }
 
             "end_game" -> {
-                val game = gameManager.getOrCreateGame(msg.gameId)
+                val game = gameManager.getGame(msg.gameId)
 
                 if (game.status != GamePhase.FINISHED) {
                     println(">>> Game is not in FINISHED phase")

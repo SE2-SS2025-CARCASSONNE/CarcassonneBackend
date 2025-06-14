@@ -8,22 +8,33 @@ import kotlin.random.Random
 class GameManager {
     private val games = mutableMapOf<String, GameState>()
 
+    fun createGameWithHost(gameId: String, hostName: String): GameState {
+        val host = Player(hostName, 0, 8, 0)
+        val game = GameState(gameId)
 
-    fun getOrCreateGame(gameId: String): GameState {
-        return games.getOrPut(gameId) {
-            val gameState = GameState(gameId)
+        val fullDeck = createShuffledTileDeck(System.currentTimeMillis()).toMutableList()
 
-            // Create full shuffled deck
-            val fullDeck = createShuffledTileDeck(System.currentTimeMillis()).toMutableList()
-            gameState.tileDeck = fullDeck
-
-            val startingTile = fullDeck.removeAt(0).copy(position = Position(0, 0))
-            gameState.board[Position(0, 0)] = startingTile
-
-
-            gameState
+        val index = fullDeck.indexOfFirst { it.id == "tile-d-0" }
+        val startTile = if (index >= 0) {
+            fullDeck.removeAt(index)
+        } else {
+            println("Start tile tile-d-0 not found in deck, using first tile instead")
+            fullDeck.removeAt(0)
         }
+
+        game.board[Position(0, 0)] = startTile.copy(position = Position(0, 0))
+        println("New game $gameId: start tile ${startTile.id} placed at (0,0)")
+
+        fullDeck.shuffle()
+        game.tileDeck = fullDeck
+
+        game.players.add(host)
+        games[gameId] = game
+        return game
     }
+
+    fun getGame(gameId: String): GameState =
+        games[gameId] ?: throw IllegalArgumentException("Game $gameId not found")
 
 
     // Function to create a shuffled tile deck
@@ -46,6 +57,8 @@ class GameManager {
     fun drawTileForPlayer(gameId: String): Tile? {
         val game = games[gameId] ?: return null
 
+
+
         println(" Starting tile draw... Deck size: ${game.tileDeck.size}, Discarded: ${game.discardedTiles.size}")
 
         // If deck is empty, try reshuffling discarded tiles
@@ -59,11 +72,14 @@ class GameManager {
             val tile = game.drawTile()!!
             if (canPlaceTileAnywhere(game, tile)) {
                 println(" Playable tile drawn: ${tile.id}")
+                val validPositions = getAllValidPositions(gameId, tile)
+                println("Valid placements for ${tile.id}: $validPositions")
                 return tile
             } else {
                 if (game.tileDeck.isEmpty()) {
-                    println(" Final tile ${tile.id} is unplayable and will NOT be added back.")
+                    println("️ Final tile ${tile.id} is unplayable and will NOT be added back.")
                     // Don't add to discardedTiles
+                    
                 } else {
                     println(" Tile ${tile.id} discarded (no valid position)")
                     game.discardedTiles.add(tile)
@@ -76,14 +92,13 @@ class GameManager {
         return null
     }
 
-
     fun canPlaceTileAnywhere(game: GameState, tile: Tile): Boolean {
         val potentialSpots = game.board.keys.flatMap { pos ->
             listOf(
+                Position(pos.x, pos.y - 1),
                 Position(pos.x + 1, pos.y),
-                Position(pos.x - 1, pos.y),
                 Position(pos.x, pos.y + 1),
-                Position(pos.x, pos.y - 1)
+                Position(pos.x - 1, pos.y)
             )
         }.filter { it !in game.board.keys }.toSet()
 
@@ -103,9 +118,6 @@ class GameManager {
         println(" No valid placement found for ${tile.id}")
         return false
     }
-
-
-
 
      fun calculateScore(gameId: String, placedTile: Tile) {
          val game = games[gameId] ?: throw IllegalArgumentException("Game $gameId is not registered")
@@ -210,7 +222,23 @@ class GameManager {
             points
         }
         "ROAD" -> basePoints
-        "MONASTERY" -> basePoints
+        "MONASTERY" -> {
+            val centerPos = involvedMeeples
+            .first()  // There can only be 1 meeple on a monastery
+            .let { meeple ->
+                game.board.entries.first { it.value.id == meeple.tileId }.key
+            }
+
+        // Count the 8 surrounding occupied spots
+            val deltas = listOf(
+            -1 to -1, 0 to -1, +1 to -1,
+            -1 to  0,          +1 to  0,
+            -1 to +1, 0 to +1, +1 to +1
+        )
+        1 + deltas.count { (dx, dy) ->
+            game.board.containsKey(Position(centerPos.x + dx, centerPos.y + dy))
+        }
+    }
         else -> {
             println("Ungültiger Feature-Typ: $featureType")
             0
@@ -301,20 +329,51 @@ class GameManager {
      * Helper method to determine validity of position in the context of tile placement
      * returns true if tile can be placed at the desired position
      */
+    fun getAllValidPositions(gameId: String, tile: Tile): List<Triple<Position, TileRotation, Boolean>> {
+        val game = games[gameId] ?: throw IllegalArgumentException("Game not found")
+        val validPlacements = mutableListOf<Triple<Position, TileRotation, Boolean>>()
+
+        val potentialSpots = game.board.keys.flatMap { pos ->
+            listOf(
+                Position(pos.x + 1, pos.y),
+                Position(pos.x - 1, pos.y),
+                Position(pos.x, pos.y - 1),
+                Position(pos.x, pos.y + 1)
+            )
+        }.filter { it !in game.board.keys }.toSet()
+
+        for (spot in potentialSpots) {
+            for (rotation in TileRotation.values()) {
+                val rotatedTile = tile.copy(tileRotation = rotation, position = spot)
+                val isValid = isValidPosition(game, rotatedTile, spot, rotation)
+                if (isValid) {
+                    validPlacements.add(Triple(spot, rotation, true))
+                }
+            }
+        }
+
+        return validPlacements
+    }
+
+/*
     private fun isValidPosition(game: GameState, tile: Tile, position: Position?, tileRotation: TileRotation): Boolean {
         if (position == null){
             throw IllegalArgumentException("Position can not be null")
         }
-        val rotatedTile = tile.copy(tileRotation = tileRotation)
-        val terrains = rotatedTile.getRotatedTerrains()
 
-        val neighbors = mapOf(
-            Position(position.x, position.y + 1) to "N",
-            Position(position.x + 1, position.y) to "E",
-            Position(position.x, position.y - 1) to "S",
-            Position(position.x - 1, position.y) to "W"
+        val terrains = mapOf(
+            "N" to tile.terrainNorth,
+            "E" to tile.terrainEast,
+            "S" to tile.terrainSouth,
+            "W" to tile.terrainWest
         )
 
+        val neighbors = mapOf(
+            Position(position.x, position.y - 1) to "N",
+            Position(position.x + 1, position.y) to "E",
+            Position(position.x, position.y + 1) to "S",
+            Position(position.x - 1, position.y) to "W"
+        )
 
         var hasAdjacent = false
 
@@ -334,6 +393,52 @@ class GameManager {
 
         // Disallow isolated tiles except center
         return hasAdjacent || position == Position(0, 0)
+    }*/
+
+    // Use this method for debugging, uncomment the one above later
+    private fun isValidPosition(
+        game: GameState,
+        tile: Tile,
+        position: Position,
+        tileRotation: TileRotation
+    ): Boolean {
+
+        val terrains = mapOf(
+            "N" to tile.terrainNorth,
+            "E" to tile.terrainEast,
+            "S" to tile.terrainSouth,
+            "W" to tile.terrainWest
+        )
+
+        val neighbors = listOf(
+            Position(position.x, position.y - 1) to Pair("N", "S"),
+            Position(position.x + 1, position.y) to Pair("E", "W"),
+            Position(position.x, position.y + 1) to Pair("S", "N"),
+            Position(position.x - 1, position.y) to Pair("W", "E")
+        )
+
+        var hasAdjacent = false
+
+        println("→ testing spot=$position, rot=$tileRotation (tile terrains=${terrains.values})")
+
+        for ((neighborPos, dirs) in neighbors) {
+            val (dir, oppositeDir) = dirs
+            val neighbor = game.board[neighborPos] ?: continue
+            hasAdjacent = true
+
+            val ours   = terrains[dir]!!
+            val theirs = neighbor.getRotatedTerrains()[oppositeDir]!!
+            println("    $dir @ $neighborPos: ours=$ours, theirs=$theirs")
+
+            if (ours != theirs) {
+                println("      ❌ mismatch on $dir; rejecting")
+                return false
+            }
+        }
+
+        val allowed = hasAdjacent || position == Position(0,0)
+        println("    ✓ all matched? $hasAdjacent, allowed=$allowed")
+        return allowed
     }
 
     private fun isMonasteryComplete(board: Map<Position, Tile>, position: Position): Boolean {
@@ -368,9 +473,9 @@ class GameManager {
     }
 
     private fun getNeighborPosition(position: Position, direction: String): Position = when (direction) {
-        "N" -> Position(position.x, position.y + 1)
+        "N" -> Position(position.x, position.y - 1)
         "E" -> Position(position.x + 1, position.y)
-        "S" -> Position(position.x, position.y - 1)
+        "S" -> Position(position.x, position.y + 1)
         "W" -> Position(position.x - 1, position.y)
         else -> position
     }
@@ -403,9 +508,9 @@ class GameManager {
             cityTiles.add(pos)
 
             val neighborOffsets = mapOf(
-                "N" to Position(pos.x, pos.y + 1),
+                "N" to Position(pos.x, pos.y - 1),
                 "E" to Position(pos.x + 1, pos.y),
-                "S" to Position(pos.x, pos.y - 1),
+                "S" to Position(pos.x, pos.y + 1),
                 "W" to Position(pos.x - 1, pos.y)
             )
 
@@ -526,12 +631,16 @@ class GameManager {
     fun getConnectedFeatureTiles(game: GameState, startTile: Tile, startPosition: MeeplePosition): List<Position> {
         val visited = mutableSetOf<Position>()
         val featureTiles = mutableListOf<Position>()
-        val queue = ArrayDeque<Pair<Position, String>>() // Position + Ausgangsrichtung
+        val queue = ArrayDeque<Position>()
 
         val startTilePosition = Position(startTile.position!!.x, startTile.position.y)
-        queue.add(startTilePosition to startPosition.name) // Nutze die Richtung als String ("N", "E", etc.)
+        queue.add(startTilePosition)
+
+        val featureType = startTile.getTerrainAtOrNull(startPosition)
+            ?: return emptyList() // Find out exactly which feature needs to be followed, to avoid spillover into ANY connected edges on the board
+
         while (queue.isNotEmpty()) {
-            val (currentPos, fromDirection) = queue.removeFirst()
+            val currentPos = queue.removeFirst()
             if (!visited.add(currentPos)) continue
 
             val currentTile = game.board[currentPos] ?: continue
@@ -541,15 +650,15 @@ class GameManager {
 
             // Prüfe angrenzende Tiles basierend auf der Verbindung und Rotation
             val neighborOffsets = mapOf(
-                "N" to Position(currentPos.x, currentPos.y + 1),
+                "N" to Position(currentPos.x, currentPos.y - 1),
                 "E" to Position(currentPos.x + 1, currentPos.y),
-                "S" to Position(currentPos.x, currentPos.y - 1),
+                "S" to Position(currentPos.x, currentPos.y + 1),
                 "W" to Position(currentPos.x - 1, currentPos.y)
             )
 
             for ((dir, neighborPos) in neighborOffsets) {
-                val neighborTile = game.board[neighborPos]
-                if (neighborTile == null) continue
+                if (rotatedTerrains[dir] != featureType) continue // Only step out along the edges of our previously determined featureType
+                val neighborTile = game.board[neighborPos] ?: continue
 
                 val neighborTerrains = neighborTile.getRotatedTerrains()
                 val oppositeDir = when (dir) {
@@ -561,8 +670,8 @@ class GameManager {
                 }
 
                 // Prüfe, ob die Verbindung zwischen den Tiles passt
-                if (rotatedTerrains[dir] == neighborTerrains[oppositeDir]) {
-                    queue.add(neighborPos to dir)
+                if (neighborTerrains[oppositeDir] == featureType) {
+                    queue.add(neighborPos)
                 }
             }
         }
@@ -578,22 +687,6 @@ class GameManager {
                     game.board[meepleTilePosition]?.getTerrainType(direction) == featureType
         }
     }
-
-    fun createGameWithHost(gameId: String, hostName: String): GameState {
-        val host = Player(hostName, 0, 8, 0)
-        val game = GameState(gameId)
-
-        val fullDeck = createShuffledTileDeck(System.currentTimeMillis()).toMutableList()
-        game.tileDeck = fullDeck
-
-        val startingTile = fullDeck.removeAt(0).copy(position = Position(0, 0))
-        game.board[Position(0, 0)] = startingTile
-
-        game.players.add(host)
-        games[gameId] = game
-        return game
-    }
-
 
     fun getUniqueTiles(): List<Tile> {
         // Save all 24 unique base tiles in a list for tile deck generation
