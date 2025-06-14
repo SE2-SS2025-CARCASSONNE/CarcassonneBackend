@@ -59,7 +59,7 @@ data class GameState(
             throw IllegalStateException("Game is not in tile placement phase")
         }
         board[position] = tile
-        status = GamePhase.MEEPLE_PLACEMENT // out-comment this line for manually testing place tile
+        status = GamePhase.MEEPLE_PLACEMENT // comment-out this line for manually testing place tile (DONT PUSH WITH OUT-COMMENTED LINE OR TESTS WILL BREAK)
     }
 
     // Shuffle and add tiles to the deck (for a random start)

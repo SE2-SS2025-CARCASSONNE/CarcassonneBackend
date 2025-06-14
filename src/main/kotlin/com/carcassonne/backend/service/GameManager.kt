@@ -355,18 +355,12 @@ class GameManager {
         return validPlacements
     }
 
-/*
     private fun isValidPosition(game: GameState, tile: Tile, position: Position?, tileRotation: TileRotation): Boolean {
         if (position == null){
             throw IllegalArgumentException("Position can not be null")
         }
 
-        val terrains = mapOf(
-            "N" to tile.terrainNorth,
-            "E" to tile.terrainEast,
-            "S" to tile.terrainSouth,
-            "W" to tile.terrainWest
-        )
+        val terrains = tile.getRotatedTerrains()
 
         val neighbors = mapOf(
             Position(position.x, position.y - 1) to "N",
@@ -393,9 +387,9 @@ class GameManager {
 
         // Disallow isolated tiles except center
         return hasAdjacent || position == Position(0, 0)
-    }*/
+    }
 
-    // Use this method for debugging, uncomment the one above later
+    /* Use this method for debugging if tile placement ever breaks again
     private fun isValidPosition(
         game: GameState,
         tile: Tile,
@@ -403,12 +397,7 @@ class GameManager {
         tileRotation: TileRotation
     ): Boolean {
 
-        val terrains = mapOf(
-            "N" to tile.terrainNorth,
-            "E" to tile.terrainEast,
-            "S" to tile.terrainSouth,
-            "W" to tile.terrainWest
-        )
+        val terrains = tile.getRotatedTerrains()
 
         val neighbors = listOf(
             Position(position.x, position.y - 1) to Pair("N", "S"),
@@ -439,7 +428,7 @@ class GameManager {
         val allowed = hasAdjacent || position == Position(0,0)
         println("    ✓ all matched? $hasAdjacent, allowed=$allowed")
         return allowed
-    }
+    }*/
 
     private fun isMonasteryComplete(board: Map<Position, Tile>, position: Position): Boolean {
         val adjacentOffsets = listOf(
