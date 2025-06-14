@@ -79,6 +79,7 @@ class GameManager {
                 if (game.tileDeck.isEmpty()) {
                     println("️ Final tile ${tile.id} is unplayable and will NOT be added back.")
                     // Don't add to discardedTiles
+                    
                 } else {
                     println(" Tile ${tile.id} discarded (no valid position)")
                     game.discardedTiles.add(tile)
