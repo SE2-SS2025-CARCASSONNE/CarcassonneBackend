@@ -46,8 +46,8 @@ data class GameState(
     // Add a player to the game
     fun addPlayer(player: String) {
         if (status == GamePhase.WAITING && players.size < 4) {
-            val playerr = Player(player,0,8,0)
-            players.add(playerr)
+            val player = Player(player,0,8,0)
+            players.add(player)
         } else {
             throw IllegalStateException("Game already started or max players reached")
         }
@@ -59,7 +59,7 @@ data class GameState(
             throw IllegalStateException("Game is not in tile placement phase")
         }
         board[position] = tile
-        //status = GamePhase.MEEPLE_PLACEMENT (only out-commented for testing place tile)
+        status = GamePhase.MEEPLE_PLACEMENT // out-comment this line for manually testing place tile
     }
 
     // Shuffle and add tiles to the deck (for a random start)

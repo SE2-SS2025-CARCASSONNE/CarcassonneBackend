@@ -32,12 +32,12 @@ class GameRestControllerTest {
         val exampleId = "A5KF01"
         val gameState = GameState(gameId = exampleId)
 
-        `when`(gameManager.getOrCreateGame(exampleId)).thenReturn(gameState)
+        `when`(gameManager.getGame(exampleId)).thenReturn(gameState)
         val response: ResponseEntity<GameState> = gameRestController.getGame(exampleId, userDetails)
 
         assertEquals(200, response.statusCode.value())
         assertEquals(gameState, response.body)
-        verify(gameManager, times(1)).getOrCreateGame(exampleId)
+        verify(gameManager, times(1)).getGame(exampleId)
     }
 
     @Test
@@ -45,7 +45,7 @@ class GameRestControllerTest {
     fun getGameThrowExceptionTest() {
         val exampleId = "Error001"
 
-        `when`(gameManager.getOrCreateGame(exampleId)).thenThrow(RuntimeException("Critical error"))
+        `when`(gameManager.getGame(exampleId)).thenThrow(RuntimeException("Critical error"))
 
         val exception = assertThrows(RuntimeException::class.java) {
             gameRestController.getGame(exampleId, userDetails)

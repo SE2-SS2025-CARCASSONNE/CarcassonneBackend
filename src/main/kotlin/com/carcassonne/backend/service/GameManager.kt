@@ -221,7 +221,23 @@ class GameManager {
             points
         }
         "ROAD" -> basePoints
-        "MONASTERY" -> basePoints
+        "MONASTERY" -> {
+            val centerPos = involvedMeeples
+            .first()  // There can only be 1 meeple on a monastery
+            .let { meeple ->
+                game.board.entries.first { it.value.id == meeple.tileId }.key
+            }
+
+        // Count the 8 surrounding occupied spots
+            val deltas = listOf(
+            -1 to -1, 0 to -1, +1 to -1,
+            -1 to  0,          +1 to  0,
+            -1 to +1, 0 to +1, +1 to +1
+        )
+        1 + deltas.count { (dx, dy) ->
+            game.board.containsKey(Position(centerPos.x + dx, centerPos.y + dy))
+        }
+    }
         else -> {
             println("Ungültiger Feature-Typ: $featureType")
             0
@@ -614,12 +630,16 @@ class GameManager {
     fun getConnectedFeatureTiles(game: GameState, startTile: Tile, startPosition: MeeplePosition): List<Position> {
         val visited = mutableSetOf<Position>()
         val featureTiles = mutableListOf<Position>()
-        val queue = ArrayDeque<Pair<Position, String>>() // Position + Ausgangsrichtung
+        val queue = ArrayDeque<Position>()
 
         val startTilePosition = Position(startTile.position!!.x, startTile.position.y)
-        queue.add(startTilePosition to startPosition.name) // Nutze die Richtung als String ("N", "E", etc.)
+        queue.add(startTilePosition)
+
+        val featureType = startTile.getTerrainAtOrNull(startPosition)
+            ?: return emptyList() // Find out exactly which feature needs to be followed, to avoid spillover into ANY connected edges on the board
+
         while (queue.isNotEmpty()) {
-            val (currentPos, fromDirection) = queue.removeFirst()
+            val currentPos = queue.removeFirst()
             if (!visited.add(currentPos)) continue
 
             val currentTile = game.board[currentPos] ?: continue
@@ -636,8 +656,8 @@ class GameManager {
             )
 
             for ((dir, neighborPos) in neighborOffsets) {
-                val neighborTile = game.board[neighborPos]
-                if (neighborTile == null) continue
+                if (rotatedTerrains[dir] != featureType) continue // Only step out along the edges of our previously determined featureType
+                val neighborTile = game.board[neighborPos] ?: continue
 
                 val neighborTerrains = neighborTile.getRotatedTerrains()
                 val oppositeDir = when (dir) {
@@ -649,8 +669,8 @@ class GameManager {
                 }
 
                 // Prüfe, ob die Verbindung zwischen den Tiles passt
-                if (rotatedTerrains[dir] == neighborTerrains[oppositeDir]) {
-                    queue.add(neighborPos to dir)
+                if (neighborTerrains[oppositeDir] == featureType) {
+                    queue.add(neighborPos)
                 }
             }
         }
