@@ -31,7 +31,7 @@ class GameWebSocketControllerTest {
             on { getCurrentPlayer() } doReturn playerName
         }
 
-        whenever(mockGameManager.getOrCreateGame(gameId)).thenReturn(mockGameState)
+        whenever(mockGameManager.getGame(gameId)).thenReturn(mockGameState)
 
         val message = GameMessage(
             type = "join_game",
