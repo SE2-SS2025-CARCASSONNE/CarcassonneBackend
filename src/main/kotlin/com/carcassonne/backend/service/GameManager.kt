@@ -91,14 +91,13 @@ class GameManager {
         return null
     }
 
-
     fun canPlaceTileAnywhere(game: GameState, tile: Tile): Boolean {
         val potentialSpots = game.board.keys.flatMap { pos ->
             listOf(
-                Position(pos.x + 1, pos.y),
-                Position(pos.x - 1, pos.y),
                 Position(pos.x, pos.y - 1),
-                Position(pos.x, pos.y + 1)
+                Position(pos.x + 1, pos.y),
+                Position(pos.x, pos.y + 1),
+                Position(pos.x - 1, pos.y)
             )
         }.filter { it !in game.board.keys }.toSet()
 
@@ -118,9 +117,6 @@ class GameManager {
         println(" No valid placement found for ${tile.id}")
         return false
     }
-
-
-
 
      fun calculateScore(gameId: String, placedTile: Tile) {
          val game = games[gameId] ?: throw IllegalArgumentException("Game $gameId is not registered")
@@ -342,12 +338,18 @@ class GameManager {
         return validPlacements
     }
 
+/*
     private fun isValidPosition(game: GameState, tile: Tile, position: Position?, tileRotation: TileRotation): Boolean {
         if (position == null){
             throw IllegalArgumentException("Position can not be null")
         }
-        val rotatedTile = tile.copy(tileRotation = tileRotation)
-        val terrains = rotatedTile.getRotatedTerrains()
+
+        val terrains = mapOf(
+            "N" to tile.terrainNorth,
+            "E" to tile.terrainEast,
+            "S" to tile.terrainSouth,
+            "W" to tile.terrainWest
+        )
 
         val neighbors = mapOf(
             Position(position.x, position.y - 1) to "N",
@@ -355,7 +357,6 @@ class GameManager {
             Position(position.x, position.y + 1) to "S",
             Position(position.x - 1, position.y) to "W"
         )
-
 
         var hasAdjacent = false
 
@@ -375,6 +376,52 @@ class GameManager {
 
         // Disallow isolated tiles except center
         return hasAdjacent || position == Position(0, 0)
+    }*/
+
+    // Use this method for debugging, uncomment the one above later
+    private fun isValidPosition(
+        game: GameState,
+        tile: Tile,
+        position: Position,
+        tileRotation: TileRotation
+    ): Boolean {
+
+        val terrains = mapOf(
+            "N" to tile.terrainNorth,
+            "E" to tile.terrainEast,
+            "S" to tile.terrainSouth,
+            "W" to tile.terrainWest
+        )
+
+        val neighbors = listOf(
+            Position(position.x, position.y - 1) to Pair("N", "S"),
+            Position(position.x + 1, position.y) to Pair("E", "W"),
+            Position(position.x, position.y + 1) to Pair("S", "N"),
+            Position(position.x - 1, position.y) to Pair("W", "E")
+        )
+
+        var hasAdjacent = false
+
+        println("→ testing spot=$position, rot=$tileRotation (tile terrains=${terrains.values})")
+
+        for ((neighborPos, dirs) in neighbors) {
+            val (dir, oppositeDir) = dirs
+            val neighbor = game.board[neighborPos] ?: continue
+            hasAdjacent = true
+
+            val ours   = terrains[dir]!!
+            val theirs = neighbor.getRotatedTerrains()[oppositeDir]!!
+            println("    $dir @ $neighborPos: ours=$ours, theirs=$theirs")
+
+            if (ours != theirs) {
+                println("      ❌ mismatch on $dir; rejecting")
+                return false
+            }
+        }
+
+        val allowed = hasAdjacent || position == Position(0,0)
+        println("    ✓ all matched? $hasAdjacent, allowed=$allowed")
+        return allowed
     }
 
     private fun isMonasteryComplete(board: Map<Position, Tile>, position: Position): Boolean {
