@@ -366,10 +366,9 @@ class GameManagerTest {
     @Test
     fun `should reduce remainingMeeples after valid first meeple placement`() {
         val gameId = "meeple-reduction-test"
-        val game = gameManager.getOrCreateGame(gameId)
+        val game = gameManager.createGameWithHost(gameId, "Player1")
 
         // Spiel vorbereiten
-        game.addPlayer("Player1")
         game.addPlayer("Player2")
         game.startGame()
 
