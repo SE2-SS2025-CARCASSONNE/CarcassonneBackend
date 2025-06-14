@@ -815,7 +815,7 @@ class GameManagerTest {
     @Test
     fun `drawTile reshuffles discarded tiles if deck is empty`() {
         val gameId = "reshuffle-test"
-        val game = gameManager.getOrCreateGame(gameId)
+        val game = gameManager.createGameWithHost(gameId, "host")
 
         // Place a starting tile at (0, 0)
         game.board[Position(0, 0)] = Tile(
