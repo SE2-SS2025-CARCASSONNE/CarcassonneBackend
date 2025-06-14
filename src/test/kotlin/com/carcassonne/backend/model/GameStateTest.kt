@@ -51,7 +51,7 @@ class GameStateTest {
             terrainWest = TerrainType.ROAD,
             tileRotation = TileRotation.NORTH
         )
-        val position = Position(0, 0)
+        val position = Position(0, -1)
         gameState.placeTile(tile, position)
         assertEquals(tile, gameState.board[position])
         assertEquals(GamePhase.MEEPLE_PLACEMENT, gameState.status)

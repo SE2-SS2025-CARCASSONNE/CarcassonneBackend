@@ -23,7 +23,7 @@ class GameWebSocketEndGameTest {
         val players = mutableListOf(player1, player2)
         val gameState = GameState(gameId = gameId, players = players, status = GamePhase.FINISHED)
 
-        whenever(mockGameManager.getOrCreateGame(gameId)).thenReturn(gameState)
+        whenever(mockGameManager.getGame(gameId)).thenReturn(gameState)
         whenever(mockGameManager.endGame(gameId)).thenReturn("player1")
 
         val message = GameMessage(type = "end_game", gameId = gameId, player = "player1")

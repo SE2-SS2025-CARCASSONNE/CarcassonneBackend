@@ -6,7 +6,8 @@ data class GameState(
     val board: MutableMap<Position, Tile> = mutableMapOf(),
     var currentPlayerIndex: Int = 0,
     var status: GamePhase = GamePhase.WAITING,
-    val tileDeck: MutableList<Tile> = mutableListOf(), // The tile deck can be managed here.
+    var discardedTiles: MutableList<Tile> = mutableListOf(),
+    var tileDeck: MutableList<Tile> = mutableListOf(), // The tile deck can be managed here.
     val meeplesOnBoard: MutableList<Meeple> = mutableListOf() // Liste der platzierten Meeples
 ) {
     // Switch to the next player
@@ -45,8 +46,8 @@ data class GameState(
     // Add a player to the game
     fun addPlayer(player: String) {
         if (status == GamePhase.WAITING && players.size < 4) {
-            val playerr = Player(player,0,8,0)
-            players.add(playerr)
+            val player = Player(player,0,8,0)
+            players.add(player)
         } else {
             throw IllegalStateException("Game already started or max players reached")
         }
@@ -58,7 +59,7 @@ data class GameState(
             throw IllegalStateException("Game is not in tile placement phase")
         }
         board[position] = tile
-        status = GamePhase.MEEPLE_PLACEMENT
+        status = GamePhase.MEEPLE_PLACEMENT // comment-out this line for manually testing place tile (DONT PUSH WITH OUT-COMMENTED LINE OR TESTS WILL BREAK)
     }
 
     // Shuffle and add tiles to the deck (for a random start)
