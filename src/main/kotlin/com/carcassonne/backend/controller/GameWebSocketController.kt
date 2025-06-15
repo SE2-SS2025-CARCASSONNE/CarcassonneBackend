@@ -95,12 +95,44 @@ class GameWebSocketController(
                         "player" to mapOf("id" to msg.player)
                     )
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", boardUpdatePayload)
-                }
-                catch(e: Exception) {
+                } catch(e: Exception) {
                     messagingTemplate.convertAndSend(
                         "/topic/game/${msg.gameId}",
                         mapOf("type" to "error", "message" to e.message)
                     )
+                }
+            }
+
+            "calculate_score" -> {
+                try {
+                    val game = gameManager.getGame(msg.gameId)
+                    val tile = msg.tile
+
+                    if (tile == null) {
+                        val error = mapOf(
+                            "type" to "error",
+                            "message" to "Tile required for scoring"
+                        )
+                        messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
+                        return
+                    }
+
+                    // Setze Spielstatus SCORING – falls nicht schon geschehen
+                    game.status = GamePhase.SCORING
+
+                    // Punkte berechnen
+                    gameManager.calculateScore(msg.gameId, tile)
+
+                    // Scores an alle Clients senden
+                    val payload = mapOf(
+                        "type" to "score_update",
+                        "scores" to game.players.map { mapOf("player" to it.id, "score" to it.score) }
+                    )
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
+
+                } catch (e: Exception) {
+                    val error = mapOf("type" to "error", "message" to "Scoring failed: ${e.message}")
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
                 }
             }
 
