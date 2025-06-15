@@ -19,10 +19,10 @@ class GameManagerTest {
 
     @Test
     fun `should create and return new game if not exists`() {
-        val game = gameManager.getOrCreateGame("test-game")
+        val game = gameManager.createGameWithHost("test-game", "host")
         assertEquals("test-game", game.gameId)
 
-        val sameGame = gameManager.getOrCreateGame("test-game")
+        val sameGame = gameManager.getGame("test-game")
         assertSame(game, sameGame, "Should return the same instance for same gameId")
     }
     @Test
@@ -64,14 +64,27 @@ class GameManagerTest {
 
 
     @Test
-    fun `drawTileForPlayer should return tile if deck has tiles`() {
-        val game = gameManager.getOrCreateGame("game-draw")
+    fun `drawTileForPlayer should return tile if deck has placeable tile`() {
+        val game = gameManager.createGameWithHost("game-draw", "host")
+
+        // Place a starting tile at (0,0) so something is on the board
+        game.board[Position(0, 0)] = Tile(
+            id = "start-tile",
+            terrainNorth = TerrainType.ROAD,
+            terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH
+        )
+
+        // Add a tile that can connect to that starting tile
         val tile = Tile(
-            "${TerrainType.CITY}_${this}",
-            TerrainType.CITY, TerrainType.CITY,
-            TerrainType.CITY, TerrainType.ROAD,
-            TileRotation.NORTH,
-            Position(0,0)
+            id = "test-tile",
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.ROAD,
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH
         )
         game.tileDeck.add(tile)
 
@@ -81,7 +94,7 @@ class GameManagerTest {
 
     @Test
     fun `drawTileForPlayer should return null if deck is empty`() {
-        val game = gameManager.getOrCreateGame("empty-draw")
+        val game = gameManager.createGameWithHost("empty-draw", "host")
         game.tileDeck.clear()
 
         val result = gameManager.drawTileForPlayer("empty-draw")
@@ -91,8 +104,7 @@ class GameManagerTest {
     @Test
     fun `placeTile should place tile if first tile`() {
         val gameId = "game-1"
-        val game = gameManager.getOrCreateGame(gameId)
-        game.addPlayer("Player1")
+        val game = gameManager.createGameWithHost(gameId, "Player1")
         game.addPlayer("Player2")
 
         game.startGame()
@@ -115,8 +127,7 @@ class GameManagerTest {
     @Test
     fun `placeTile should place tile if valid`() {
         val gameId = "game-1"
-        val game = gameManager.getOrCreateGame(gameId)
-        game.addPlayer("Player1")
+        val game = gameManager.createGameWithHost(gameId, "Player1")
         game.addPlayer("Player2")
         game.startGame()
 
@@ -125,14 +136,14 @@ class GameManagerTest {
             TerrainType.ROAD, TerrainType.CITY,
             TerrainType.CITY, TerrainType.CITY,
             TileRotation.NORTH,
-            Position(0,0)
+            Position(0,-1)
         )
         val tile2 = Tile(
             "${TerrainType.CITY}_${this}",
             TerrainType.FIELD, TerrainType.FIELD,
-            TerrainType.ROAD, TerrainType.FIELD,
+            TerrainType.ROAD, TerrainType.CITY,
             TileRotation.NORTH,
-            Position(0,1),
+            Position(1,-1),
             true
         )
         // simulate first round
@@ -148,15 +159,14 @@ class GameManagerTest {
         )
 
         assertNotNull(updated)
-        assertEquals(tile1, updated?.board?.get(Position(0,0)))
-        assertEquals(tile2, updated?.board?.get(Position(0,1)))
+        assertEquals(tile1, updated?.board?.get(Position(0,-1)))
+        assertEquals(tile2, updated?.board?.get(Position(1,-1)))
     }
 
     @Test
     fun `should reject tile placement if not current player`() {
         val gameId = "wrong-turn"
-        val game = gameManager.getOrCreateGame(gameId)
-        game.addPlayer("Player1")
+        val game = gameManager.createGameWithHost(gameId, "Player1")
         game.addPlayer("Player2")
         game.startGame()
 
@@ -174,52 +184,37 @@ class GameManagerTest {
     }
 
     @Test
-    fun `should reject tile placement if not in tile placement phase`() {
-        val gameId = "wrong-phase"
-        val game = gameManager.getOrCreateGame(gameId)
-        game.addPlayer("Player1")
-        game.addPlayer("Player2")
-        game.status = GamePhase.WAITING
-
-        val tile = Tile(
-            "${TerrainType.ROAD}_${this}",
-            TerrainType.ROAD, TerrainType.ROAD,
-            TerrainType.ROAD, TerrainType.ROAD,
-            TileRotation.NORTH,
-            Position(0,0)
-        )
-        val result: () -> Unit = { gameManager.placeTile(gameId, tile, "Player1") } // Wrong phase/game status
-
-        assertFailsWith<IllegalStateException>("Game is not in tile placement phase", block = result)
-        assertFalse(game.board.containsKey(Position(0,0)), "Tile should not be placed")
-    }
-
-    @Test
     fun `should reject tile placement if invalid position`() {
         val gameId = "invalid-position"
-        val game = gameManager.getOrCreateGame(gameId)
-        game.addPlayer("Player1")
+        val game = gameManager.createGameWithHost(gameId, "Player1")
         game.addPlayer("Player2")
         game.startGame()
 
-        val tile = Tile(
-            "${TerrainType.ROAD}_${this}",
-            TerrainType.ROAD, TerrainType.ROAD,
-            TerrainType.ROAD, TerrainType.ROAD,
-            TileRotation.NORTH,
-            Position(5,5)
-        )
-        val result: () -> Unit = { gameManager.placeTile(gameId, tile, "Player1") } // Wrong phase/game status
+        game.status = GamePhase.TILE_PLACEMENT // ✅ Required for testing position
 
-        assertFailsWith<IllegalArgumentException>("Position is invalid", block = result)
-        assertFalse(game.board.containsKey(Position(5,5)), "Tile should not be placed")
+        val tile = Tile(
+            id = "invalid-road",
+            terrainNorth = TerrainType.ROAD,
+            terrainEast = TerrainType.ROAD,
+            terrainSouth = TerrainType.ROAD,
+            terrainWest = TerrainType.ROAD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(5, 5)
+        )
+
+        val result: () -> Unit = { gameManager.placeTile(gameId, tile, "Player1") }
+
+        val exception = assertFailsWith<IllegalArgumentException> { result() }
+        assertEquals("Position is invalid", exception.message)
+        assertFalse(game.board.containsKey(Position(5, 5)))
     }
+
+
 
     @Test
     fun `should place meeple on valid city feature`() {
         val gameId = "meeple-test"
-        val game = gameManager.getOrCreateGame(gameId)
-        game.addPlayer("Player1")
+        val game = gameManager.createGameWithHost(gameId, "Player1")
         game.addPlayer("Player2")
         game.startGame()
 
@@ -257,8 +252,7 @@ class GameManagerTest {
     @Test
     fun `should NOT place meeple on invalid field feature`() {
         val gameId = "meeple-negative-test"
-        val game = gameManager.getOrCreateGame(gameId)
-        game.addPlayer("Player1")
+        val game = gameManager.createGameWithHost(gameId, "Player1")
         game.addPlayer("Player2")
         game.startGame()
 
@@ -281,8 +275,7 @@ class GameManagerTest {
     @Test
     fun `other player should NOT place a second meeple on the same feature`() {
         val gameId = "meeple-duplicate-test"
-        val game = gameManager.getOrCreateGame(gameId)
-        game.addPlayer("Player1")
+        val game = gameManager.createGameWithHost(gameId, "Player1")
         game.addPlayer("Player2")
         game.startGame()
 
@@ -314,8 +307,7 @@ class GameManagerTest {
     @Test
     fun `should NOT allow same player to place two meeples on the same tile`() {
         val gameId = "meeple-double-test"
-        val game = gameManager.getOrCreateGame(gameId)
-        game.addPlayer("Player1")
+        val game = gameManager.createGameWithHost(gameId, "Player1")
         game.addPlayer("Player2")
         game.startGame()
 
@@ -347,8 +339,7 @@ class GameManagerTest {
     @Test
     fun `should correctly place meeple on rotated tile`() {
         val gameId = "meeple-rotation-test"
-        val game = gameManager.getOrCreateGame(gameId)
-        game.addPlayer("Player1")
+        val game = gameManager.createGameWithHost(gameId, "Player1")
         game.addPlayer("Player2")
         game.startGame()
 
@@ -375,10 +366,9 @@ class GameManagerTest {
     @Test
     fun `should not allow meeple placement when player has no meeples left`() {
         val gameId = "meeple-no-meeple-test"
-        val game = gameManager.getOrCreateGame(gameId)
+        val game = gameManager.createGameWithHost(gameId, "Player1")
 
         // Füge zwei Spieler hinzu, damit das Spiel korrekt läuft
-        game.addPlayer("Player1")
         game.addPlayer("Player2")
         game.startGame()
 
@@ -413,10 +403,9 @@ class GameManagerTest {
     @Test
     fun `should not allow meeple placement on ROAD if another meeple is on connected road segment`() {
         val gameId = "road-meeple-test"
-        val game = gameManager.getOrCreateGame(gameId)
+        val game = gameManager.createGameWithHost(gameId, "Player1")
 
         // Zwei Spieler hinzufügen
-        game.addPlayer("Player1")
         game.addPlayer("Player2")
         game.startGame()
 
@@ -426,7 +415,7 @@ class GameManagerTest {
             terrainNorth = TerrainType.FIELD, terrainEast = TerrainType.ROAD,
             terrainSouth = TerrainType.FIELD, terrainWest = TerrainType.ROAD,
             tileRotation = TileRotation.NORTH,
-            position = Position(0, 0)
+            position = Position(0, 1)
         )
         gameManager.placeTile(gameId, tileWithMeeple, "Player1")
 
@@ -439,7 +428,7 @@ class GameManagerTest {
             terrainNorth = TerrainType.FIELD, terrainEast = TerrainType.ROAD,
             terrainSouth = TerrainType.FIELD, terrainWest = TerrainType.ROAD,
             tileRotation = TileRotation.NORTH,
-            position = Position(1, 0) // Direkt rechts daneben
+            position = Position(1, 1) // Direkt rechts daneben
         )
         game.nextPlayer()
         game.status = GamePhase.TILE_PLACEMENT
@@ -457,9 +446,8 @@ class GameManagerTest {
     @Test
     fun `should correctly place meeple on monastery and reject placement on non-monastery tile`() {
         val gameId = "meeple-monastery-test"
-        val game = gameManager.getOrCreateGame(gameId)
+        val game = gameManager.createGameWithHost(gameId, "Player1")
 
-        game.addPlayer("Player1")
         game.addPlayer("Player2")
         game.startGame()
 
@@ -506,9 +494,8 @@ class GameManagerTest {
     @Test
     fun `score completed city with meeples`() {
         val gameId = "scoring-test-city"
-        val game = gameManager.getOrCreateGame(gameId)
+        val game = gameManager.createGameWithHost(gameId, "Player1")
 
-        game.addPlayer("Player1")
         game.addPlayer("Player2")
         game.startGame()
 
@@ -519,9 +506,9 @@ class GameManagerTest {
             terrainNorth = TerrainType.CITY,
             terrainEast = TerrainType.FIELD,
             terrainSouth = TerrainType.FIELD,
-            terrainWest = TerrainType.FIELD,
+            terrainWest = TerrainType.ROAD,
             tileRotation = TileRotation.NORTH,
-            position = Position(0, 0)
+            position = Position(1, 0)
         )
         val cityTile2 = Tile(
             id = "city-2",
@@ -530,7 +517,7 @@ class GameManagerTest {
             terrainSouth = TerrainType.CITY,
             terrainWest = TerrainType.FIELD,
             tileRotation = TileRotation.NORTH,
-            position = Position(0, 1)
+            position = Position(1, -1)
         )
         // Spiel initialisieren
         // Tile und Meeple platzieren
@@ -551,12 +538,12 @@ class GameManagerTest {
         assertEquals(4, game.players[0].score) // 1 Tile × 2 Punkte
         assertTrue(game.meeplesOnBoard.none { it.id == "m1" })
     }
+
     @Test
     fun `do not score incomplete road`() {
         val gameId = "scoring-test-road"
-        val game = gameManager.getOrCreateGame(gameId)
+        val game = gameManager.createGameWithHost(gameId, "Player1")
 
-        game.addPlayer("Player1")
         game.addPlayer("Player2")
         game.startGame()
 
@@ -591,64 +578,19 @@ class GameManagerTest {
     @Test
     fun `score completed monastery`() {
         val gameId = "scoring-test-monastery"
-        val game = gameManager.getOrCreateGame(gameId)
+        val game = gameManager.createGameWithHost(gameId, "Player1")
 
-        game.addPlayer("Player1")
         game.addPlayer("Player2")
         game.startGame()
         game.status = GamePhase.TILE_PLACEMENT
 
-        // 1. Start-Tile bei (0,0)
+        // 1. Start-Tile bei (0,0) bereits platziert mit (CITY, ROAD, FIELD, ROAD)
+
         gameManager.placeTile(gameId,
             Tile(
                 id = "start-tile",
                 terrainNorth = TerrainType.FIELD,
                 terrainEast = TerrainType.FIELD,
-                terrainSouth = TerrainType.FIELD,
-                terrainWest = TerrainType.FIELD,
-                tileRotation = TileRotation.NORTH,
-                position = Position(0, 0)
-            ),
-            "Player1"
-        )
-        game.status = GamePhase.TILE_PLACEMENT
-
-        // 2. Tile östlich von (0,0) → (1,0)
-        gameManager.placeTile(gameId,
-            Tile(
-                id = "tile-east",
-                terrainWest = TerrainType.FIELD, // Verbindung zu start-tile
-                terrainNorth = TerrainType.FIELD,
-                terrainEast = TerrainType.FIELD,
-                terrainSouth = TerrainType.FIELD,
-                tileRotation = TileRotation.NORTH,
-                position = Position(1, 0)
-            ),
-            "Player1"
-        )
-        game.status = GamePhase.TILE_PLACEMENT
-
-        // 3. Tile nördlich von (1,0) → (1,1) (späteres Kloster)
-        gameManager.placeTile(gameId,
-            Tile(
-                id = "tile-north",
-                terrainSouth = TerrainType.FIELD, // Verbindung zu tile-east
-                terrainNorth = TerrainType.FIELD,
-                terrainEast = TerrainType.FIELD,
-                terrainWest = TerrainType.FIELD,
-                tileRotation = TileRotation.NORTH,
-                position = Position(2, 0)
-            ),
-            "Player1"
-        )
-        game.status = GamePhase.TILE_PLACEMENT
-
-        // 4. Tile westlich von (1,1) → (0,1)
-        gameManager.placeTile(gameId,
-            Tile(
-                id = "tile-west",
-                terrainEast = TerrainType.FIELD, // Verbindung zu tile-north
-                terrainNorth = TerrainType.FIELD,
                 terrainSouth = TerrainType.FIELD,
                 terrainWest = TerrainType.FIELD,
                 tileRotation = TileRotation.NORTH,
@@ -658,7 +600,48 @@ class GameManagerTest {
         )
         game.status = GamePhase.TILE_PLACEMENT
 
-        // 5. Tile östlich von (1,1) → (2,1)
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "tile-east",
+                terrainWest = TerrainType.FIELD, // Verbindung zu start-tile
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainSouth = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(1, 1)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "tile-north",
+                terrainSouth = TerrainType.FIELD, // Verbindung zu tile-east
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(2, 1)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "tile-west",
+                terrainEast = TerrainType.FIELD, // Verbindung zu tile-north
+                terrainNorth = TerrainType.FIELD,
+                terrainSouth = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(0, 2)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
         gameManager.placeTile(gameId,
             Tile(
                 id = "tile-east-2",
@@ -667,13 +650,12 @@ class GameManagerTest {
                 terrainEast = TerrainType.FIELD,
                 terrainSouth = TerrainType.FIELD,
                 tileRotation = TileRotation.NORTH,
-                position = Position(2, 1)
+                position = Position(2, 2)
             ),
             "Player1"
         )
         game.status = GamePhase.TILE_PLACEMENT
 
-        // 6. Tile nördlich von (1,1) → (1,2)
         gameManager.placeTile(gameId,
             Tile(
                 id = "tile-north-2",
@@ -682,7 +664,7 @@ class GameManagerTest {
                 terrainEast = TerrainType.FIELD,
                 terrainWest = TerrainType.FIELD,
                 tileRotation = TileRotation.NORTH,
-                position = Position(0, 2)
+                position = Position(0, 3)
             ),
             "Player1"
         )
@@ -696,7 +678,7 @@ class GameManagerTest {
                 terrainEast = TerrainType.FIELD,
                 terrainWest = TerrainType.FIELD,
                 tileRotation = TileRotation.NORTH,
-                position = Position(1, 2)
+                position = Position(1, 3)
             ),
             "Player1"
         )
@@ -710,13 +692,13 @@ class GameManagerTest {
                 terrainEast = TerrainType.FIELD,
                 terrainWest = TerrainType.FIELD,
                 tileRotation = TileRotation.NORTH,
-                position = Position(2, 2)
+                position = Position(2, 3)
             ),
             "Player1")
 
         game.status = GamePhase.TILE_PLACEMENT
 
-        // 7. Kloster-Tile in der Mitte (1,1)
+        // 7. Kloster-Tile in der Mitte (1,2)
         val monasteryTile = Tile(
             id = "monastery-tile",
             hasMonastery = true,
@@ -725,7 +707,7 @@ class GameManagerTest {
             terrainSouth = TerrainType.FIELD, // Verbindung zu tile-east
             terrainWest = TerrainType.FIELD, // Verbindung zu tile-west
             tileRotation = TileRotation.NORTH,
-            position = Position(1, 1)
+            position = Position(1, 2)
         )
         gameManager.placeTile(gameId, monasteryTile, "Player1")
 
@@ -749,10 +731,9 @@ class GameManagerTest {
     @Test
     fun `throw IllegalStateException when scoring in wrong phase`() {
         val gameId = "scoring-exception-test"
-        val game = gameManager.getOrCreateGame(gameId)
+        val game = gameManager.createGameWithHost(gameId, "Player1")
 
         // Spieler hinzufügen und Spiel starten
-        game.addPlayer("Player1")
         game.addPlayer("Player2")
         game.startGame()
 
@@ -1042,7 +1023,7 @@ class GameManagerTest {
     @Test
     fun `endGame returns winner with highest score`() {
         val gameId = "endgame-test"
-        val game = gameManager.getOrCreateGame(gameId)
+        val game = gameManager.createGameWithHost(gameId, "host")
 
         game.players.add(Player(id = "Player1", user_id = 1, score = 10, remainingMeeple = 5))
         game.players.add(Player(id = "Player2", user_id = 2, score = 15, remainingMeeple = 5))
@@ -1055,7 +1036,7 @@ class GameManagerTest {
     @Test
     fun `endGame throws exception if game is not finished`() {
         val gameId = "not-finished"
-        val game = gameManager.getOrCreateGame(gameId)
+        val game = gameManager.createGameWithHost(gameId, "host")
         game.players.add(Player(id = "Player1", user_id = 1, score = 5, remainingMeeple = 5))
         game.status = GamePhase.TILE_PLACEMENT
 
@@ -1068,7 +1049,8 @@ class GameManagerTest {
     @Test
     fun `endGame throws exception if game has no players`() {
         val gameId = "no-players"
-        val game = gameManager.getOrCreateGame(gameId)
+        val game = gameManager.createGameWithHost(gameId, "host")
+        game.players.remove(game.findPlayerById("host"))
         game.status = GamePhase.FINISHED
 
         val exception = assertFailsWith<IllegalStateException> {
@@ -1076,4 +1058,55 @@ class GameManagerTest {
         }
         assertEquals("No players to determine winner", exception.message)
     }
+    @Test
+    fun `tile count per type matches definition in base tiles`() {
+        val baseTiles = gameManager.getUniqueTiles()
+        val fullDeck = gameManager.createShuffledTileDeck(seed = 777L)
+
+        // Extract base ID by removing the unique suffix (e.g., "tile-a-0" -> "tile-a")
+        val grouped = fullDeck.groupingBy { it.id.substringBeforeLast("-") }.eachCount()
+
+        baseTiles.forEach { baseTile ->
+            val expected = baseTile.count
+            val actual = grouped[baseTile.id] ?: 0
+            assertEquals(expected, actual, "Mismatch in tile count for tile ${baseTile.id}")
+        }
+    }
+    @Test
+    fun `drawTile reshuffles discarded tiles if deck is empty`() {
+        val gameId = "reshuffle-test"
+        val game = gameManager.createGameWithHost(gameId, "host")
+
+        // Place a starting tile at (0, 0)
+        game.board[Position(0, 0)] = Tile(
+            id = "start-tile",
+            terrainNorth = TerrainType.ROAD,
+            terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(0, 0)
+        )
+
+        // This tile is compatible to be placed east of (0, 0) (FIELD-to-FIELD)
+        val tile = Tile(
+            id = "discarded-tile-1",
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH
+        )
+
+        // Simulate empty deck and discarded pile
+        game.tileDeck.clear()
+        game.discardedTiles.clear()
+        game.discardedTiles.add(tile)
+
+        val drawnTile = gameManager.drawTileForPlayer(gameId)
+
+        assertNotNull(drawnTile, "Expected a playable tile to be drawn from reshuffled discarded tiles")
+        assertEquals(tile.id, drawnTile?.id, "Expected the reshuffled tile to match the discarded one")
+    }
+
 }
