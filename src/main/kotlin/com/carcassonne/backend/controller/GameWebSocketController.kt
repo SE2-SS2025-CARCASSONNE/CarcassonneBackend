@@ -136,39 +136,6 @@ class GameWebSocketController(
                 }
             }
 
-            "calculate_score" -> {
-                try {
-                    val game = gameManager.getGame(msg.gameId)
-                    val tile = msg.tile
-
-                    if (tile == null) {
-                        val error = mapOf(
-                            "type" to "error",
-                            "message" to "Tile required for scoring"
-                        )
-                        messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
-                        return
-                    }
-
-                    // Setze Spielstatus SCORING – falls nicht schon geschehen
-                    game.status = GamePhase.SCORING
-
-                    // Punkte berechnen
-                    gameManager.calculateScore(msg.gameId, tile)
-
-                    // Scores an alle Clients senden
-                    val payload = mapOf(
-                        "type" to "score_update",
-                        "scores" to game.players.map { mapOf("player" to it.id, "score" to it.score) }
-                    )
-                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
-
-                } catch (e: Exception) {
-                    val error = mapOf("type" to "error", "message" to "Scoring failed: ${e.message}")
-                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
-                }
-            }
-
             "start_game" -> {
                 println(">>> [Backend] Received start_game for ${msg.gameId}")
                 val game = gameManager.getGame(msg.gameId)

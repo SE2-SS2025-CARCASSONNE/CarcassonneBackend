@@ -1,7 +1,6 @@
 package com.carcassonne.backend.service
 
 import com.carcassonne.backend.model.*
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -759,14 +758,13 @@ class GameManagerTest {
         //Richtige Exception Nachricht muss kocmmen
         assertEquals("Game is not in scoring phase", exception.message)
     }
-    /*
+/*
     @Test
     fun `score 10 points for completed 3x2 city with surrounding fields and battle simulation`() {
         val gameId = "city-3x3-test"
-        val game = gameManager.getOrCreateGame(gameId)
+        val game = gameManager.createGameWithHost(gameId, "Player1")
 
         // Spieler initialisieren
-        game.addPlayer("Player1")
         game.addPlayer("Player2")
         game.startGame()
         game.status = GamePhase.TILE_PLACEMENT
@@ -909,11 +907,6 @@ class GameManagerTest {
         gameManager.placeTile(gameId, cityTile4, "Player1")
         game.status = GamePhase.TILE_PLACEMENT
 
-
-
-
-
-
         // Scoring auslösen
         game.status = GamePhase.SCORING
         gameManager.calculateScore(gameId, cityTile4)
@@ -935,15 +928,13 @@ class GameManagerTest {
             message = "Meeple sollte nach Scoring entfernt werden"
         )
     }
-
-     */
+*/
     @Test
     fun `score 3 points for completed 3-tile road`() {
         val gameId = "road-test-complete"
-        val game = gameManager.getOrCreateGame(gameId)
+        val game = gameManager.createGameWithHost(gameId, "Player1")
 
         // Initialisierung
-        game.addPlayer("Player1")
         game.addPlayer("Player2")
         game.startGame()
         game.status = GamePhase.TILE_PLACEMENT
@@ -1020,6 +1011,7 @@ class GameManagerTest {
             message = "Meeple sollte entfernt werden"
         )
     }
+
     @Test
     fun `endGame returns winner with highest score`() {
         val gameId = "endgame-test"
