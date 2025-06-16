@@ -1,7 +1,6 @@
 package com.carcassonne.backend.service
 
 import com.carcassonne.backend.model.*
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -793,6 +792,259 @@ class GameManagerTest {
         }
         //Richtige Exception Nachricht muss kocmmen
         assertEquals("Game is not in scoring phase", exception.message)
+    }
+/*
+    @Test
+    fun `score 10 points for completed 3x2 city with surrounding fields and battle simulation`() {
+        val gameId = "city-3x3-test"
+        val game = gameManager.createGameWithHost(gameId, "Player1")
+
+        // Spieler initialisieren
+        game.addPlayer("Player2")
+        game.startGame()
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // 1. Südwestliches Feld-Tile (Position 0,0)
+        val fieldTileWest = Tile(
+            id = "tile--1-0",
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.FIELD, // Verbindung zu tile-0-0
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(x = 0, y = 0),
+            hasMonastery = false
+        )
+        gameManager.placeTile(gameId, fieldTileWest, "Player1")
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // 2. Erstes Stadt-Tile (Position 0,1)
+        val cityTile1 = Tile(
+            id = "tile-0-1",
+            terrainNorth = TerrainType.CITY,
+            terrainEast = TerrainType.CITY,
+            terrainSouth = TerrainType.FIELD, // Verbindung zum südlichen Feld
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(x = 0, y = 1),
+            hasMonastery = false
+        )
+        gameManager.placeTile(gameId, cityTile1, "Player1")
+        // Meeple auf erstem Stadt-Tile platzieren
+        gameManager.placeMeeple(
+            gameId = gameId,
+            playerId = "Player1",
+            meeple = Meeple(
+                id = "city-meeple-1",
+                playerId = "Player1",
+                tileId = "tile-0-1",
+
+                ),
+            position = MeeplePosition.N
+        )
+        game.nextPlayer();
+
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // 3. Südlichstes Tile (Feld, Position 1,0)
+        val southFieldTile = Tile(
+            id = "tile-0-0",
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(x = 1, y = 0),
+            hasMonastery = false
+        )
+        gameManager.placeTile(gameId, southFieldTile, "Player1")
+        game.status = GamePhase.TILE_PLACEMENT
+        // 4. Südöstliches Feld-Tile (Position 2,0) for sourrounding gemäß meeple Placement Logik
+        val fieldTileEast = Tile(
+            id = "tile-1-0",
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.FIELD, // Verbindung zu keinem Stadt-Tile
+            tileRotation = TileRotation.NORTH,
+            position = Position(x = 2, y = 0),
+            hasMonastery = false
+        )
+        gameManager.placeTile(gameId, fieldTileEast, "Player1")
+        game.nextPlayer()
+        game.status = GamePhase.TILE_PLACEMENT
+
+        val cityTileWestSouth = Tile(
+            id = "tile-0-10",
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.FIELD, // Verbindung zum südlichen Feld
+            terrainWest = TerrainType.CITY,
+            tileRotation = TileRotation.NORTH,
+            position = Position(x = 2, y = 1),
+            hasMonastery = false
+        )
+        gameManager.placeTile(gameId, cityTileWestSouth, "Player2")
+
+        gameManager.placeMeeple(
+            gameId = gameId,
+            playerId = "Player2",
+            meeple = Meeple(
+                id = "city-meeple-2",
+                playerId = "Player2",
+                tileId = "tile-0-10",
+
+            ),
+            position = MeeplePosition.W
+        )
+
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // 3. ÖMittiges süden-Nachbar-Tile (Position 1,1)
+        val cityTile2 = Tile(
+            id = "tile-1-1",
+            terrainNorth = TerrainType.CITY,
+            terrainEast = TerrainType.CITY,
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.CITY, // Verbindung zu tile-0-1
+            tileRotation = TileRotation.NORTH,
+            position = Position(x = 1, y = 1),
+            hasMonastery = false
+        )
+        gameManager.placeTile(gameId, cityTile2, "Player1")
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // 5. Nördliches östlichesTile (Position 1,2)
+        val cityTile3 = Tile(
+            id = "tile-1-2",
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.CITY, // Verbindung zu tile-1-1
+            terrainWest = TerrainType.CITY,
+            tileRotation = TileRotation.NORTH,
+            position = Position(x = 1, y = 2),
+            hasMonastery = false
+        )
+        gameManager.placeTile(gameId, cityTile3, "Player1")
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // 5. Westliches Tile (Position 0,2)
+        val cityTile4 = Tile(
+            id = "tile-0-2",
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.CITY, // Verbindung zu tile-1-2
+            terrainSouth = TerrainType.CITY, // Verbindung zu tile-0-1
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(x = 0, y = 2),
+            hasMonastery = false
+        )
+        gameManager.placeTile(gameId, cityTile4, "Player1")
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // Scoring auslösen
+        game.status = GamePhase.SCORING
+        gameManager.calculateScore(gameId, cityTile4)
+
+        // Assertions
+        assertEquals(
+            expected = 10, // 5 Stadt-Tiles × 2 Punkte
+            actual = game.players.find { it.id == "Player1" }?.score,
+            message = "Falsche Punkteberechnung für 3x2 Stadt"
+        )
+        assertEquals(
+            expected = 10, // 5 Stadt-Tiles × 2 Punkte
+            actual = game.players.find { it.id == "Player2" }?.score,
+            message = "Falsche Punkteberechnung für 3x2 Stadt"
+        )
+
+        assertTrue(
+            actual = game.meeplesOnBoard.none { it.id == "city-meeple-1" || it.id == "city-meeple-2" },
+            message = "Meeple sollte nach Scoring entfernt werden"
+        )
+    }
+*/
+    @Test
+    fun `score 3 points for completed 3-tile road`() {
+        val gameId = "road-test-complete"
+        val game = gameManager.createGameWithHost(gameId, "Player1")
+
+        // Initialisierung
+        game.addPlayer("Player2")
+        game.startGame()
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // Straßen-Tile 1
+        val roadTile1 = Tile(
+            id = "road-tile-1",
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.ROAD,
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(x = 0, y = 0),
+            hasMonastery = false
+        )
+
+        // Straßen-Tile 2
+        val roadTile2 = Tile(
+            id = "road-tile-2",
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.ROAD,
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.ROAD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(x = 1, y = 0),
+            hasMonastery = false
+        )
+
+        // Straßen-Tile 3
+        val roadTile3 = Tile(
+            id = "road-tile-3",
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.FIELD,
+            terrainSouth = TerrainType.FIELD,
+            terrainWest = TerrainType.ROAD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(x = 2, y = 0),
+            hasMonastery = false
+        )
+
+        // Tiles platzieren
+        listOf(roadTile1, roadTile2, roadTile3).forEach { tile ->
+            gameManager.placeTile(
+                gameId = gameId,
+                tile = tile,
+                playerId = "Player1"
+            )
+            game.status = GamePhase.TILE_PLACEMENT
+        }
+        game.status = GamePhase.MEEPLE_PLACEMENT
+        // Meeple platzieren
+        gameManager.placeMeeple(
+            gameId = gameId, playerId = "Player1",
+            meeple = Meeple(id = "meeple-1", playerId = "Player1", tileId = "road-tile-1",),
+            position = MeeplePosition.E
+        )
+
+        // Scoring
+        game.status = GamePhase.SCORING
+        gameManager.calculateScore(
+            gameId = gameId,
+            placedTile = roadTile3
+        )
+
+        // Assertions
+        assertEquals(
+            expected = 3,
+            actual = game.players.find { it.id == "Player1" }?.score,
+            message = "3 Tiles × 1 Punkt = 3 Punkte"
+        )
+
+        assertTrue(
+            actual = game.meeplesOnBoard.none { it.id == "meeple-1" },
+            message = "Meeple sollte entfernt werden"
+        )
     }
 
     @Test
