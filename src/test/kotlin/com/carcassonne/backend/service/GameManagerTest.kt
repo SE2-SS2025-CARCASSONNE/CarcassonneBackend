@@ -363,6 +363,39 @@ class GameManagerTest {
     }
 
     @Test
+    fun `should reduce remainingMeeples after valid first meeple placement`() {
+        val gameId = "meeple-reduction-test"
+        val game = gameManager.createGameWithHost(gameId, "Player1")
+
+        // Spiel vorbereiten
+        game.addPlayer("Player2")
+        game.startGame()
+
+        val player = game.players.first { it.id == "Player1" }
+        assertEquals(7, player.remainingMeeple, "Initialer Meeple-Stand sollte 7 sein")
+
+        // Platzieren eines Tiles
+        val tile = Tile(
+            id = "tile-start",
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.ROAD,
+            terrainSouth = TerrainType.CITY,
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(0, 0)
+        )
+        gameManager.placeTile(gameId, tile, "Player1")
+
+        // Meeple setzen
+        val meeple = Meeple(id = "meeple-001", playerId = "Player1", tileId = tile.id)
+        gameManager.placeMeeple(gameId, "Player1", meeple, MeeplePosition.S)
+
+        // Überprüfen, ob der Meeple-Zähler reduziert wurde
+        val updatedPlayer = game.players.first { it.id == "Player1" }
+        assertEquals(6, updatedPlayer.remainingMeeple, "Meeple-Zähler sollte nach Platzierung 6 sein")
+    }
+
+    @Test
     fun `should not allow meeple placement when player has no meeples left`() {
         val gameId = "meeple-no-meeple-test"
         val game = gameManager.createGameWithHost(gameId, "Player1")
@@ -469,6 +502,7 @@ class GameManagerTest {
         assertNotNull(updatedGameState, "Meeple should be placed successfully")
         assertTrue(updatedGameState!!.meeplesOnBoard.contains(meepleValid))
 
+        game.nextPlayer()
         game.status = GamePhase.TILE_PLACEMENT
 
         // Tile ohne Kloster
@@ -527,6 +561,7 @@ class GameManagerTest {
             Meeple(id = "m1", playerId = "Player1", tileId = "city-1"),
             MeeplePosition.N
         )
+        game.nextPlayer()
         game.status = GamePhase.TILE_PLACEMENT
         //Runde 2
         gameManager.placeTile(gameId,cityTile2,"Player2")

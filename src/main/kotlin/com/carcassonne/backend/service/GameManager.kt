@@ -9,7 +9,7 @@ class GameManager {
     private val games = mutableMapOf<String, GameState>()
 
     fun createGameWithHost(gameId: String, hostName: String): GameState {
-        val host = Player(hostName, 0, 8, 0)
+        val host = Player(hostName, 0, 7, 0)
         val game = GameState(gameId)
 
         val fullDeck = createShuffledTileDeck(System.currentTimeMillis()).toMutableList()
@@ -79,7 +79,7 @@ class GameManager {
                 if (game.tileDeck.isEmpty()) {
                     println("️ Final tile ${tile.id} is unplayable and will NOT be added back.")
                     // Don't add to discardedTiles
-                    
+
                 } else {
                     println(" Tile ${tile.id} discarded (no valid position)")
                     game.discardedTiles.add(tile)
@@ -326,6 +326,7 @@ class GameManager {
         }
 
         //game.nextPlayer() move to endTurn logic
+        game.status = GamePhase.MEEPLE_PLACEMENT
         return game
     }
 
@@ -603,23 +604,27 @@ class GameManager {
         meeple.position = position
         game.meeplesOnBoard.add(meeple)
 
+        // Meeple-Anzahl aktualisieren
+        currentPlayer.remainingMeeple -= 1
+
         // Nächster Spielstatus
         game.status = GamePhase.SCORING //Mike: Ist das richtig oder müssen wir auf SCORING? --> Scoring lt. Bespr. mit Jakob/Felix 27.04.2025
-        game.nextPlayer() //TODO: Mike: Check mit Jakob/Felix, ob ich überhaupt auf nextPlayer stellen darf!
 
         return game
     }
 
-    private fun isValidMeeplePosition(tile: Tile, position: MeeplePosition): Boolean {
-        if (position == MeeplePosition.C) {
-            return tile.isMonastery()
+    private fun isValidMeeplePosition(tile: Tile, pos: MeeplePosition): Boolean {
+        val terrain = tile.getTerrainAtOrNull(pos) ?: return false
+        return when (pos) {
+            MeeplePosition.C -> terrain in listOf(
+                TerrainType.MONASTERY,
+                TerrainType.ROAD,
+                TerrainType.CITY
+            )
+            else -> terrain == TerrainType.ROAD || terrain == TerrainType.CITY
         }
-
-        val rotatedTerrains = tile.getRotatedTerrains()
-        val terrain = rotatedTerrains[position.name] ?: return false
-
-        return terrain == TerrainType.CITY || terrain == TerrainType.ROAD
     }
+
 
     fun getConnectedFeatureTiles(game: GameState, startTile: Tile, startPosition: MeeplePosition): List<Position> {
         val visited = mutableSetOf<Position>()

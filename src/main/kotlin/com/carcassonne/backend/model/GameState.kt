@@ -46,7 +46,7 @@ data class GameState(
     // Add a player to the game
     fun addPlayer(player: String) {
         if (status == GamePhase.WAITING && players.size < 4) {
-            val player = Player(player,0,8,0)
+            val player = Player(player,0,7,0)
             players.add(player)
         } else {
             throw IllegalStateException("Game already started or max players reached")
