@@ -63,14 +63,29 @@ fun Tile.getTerrainType(direction: String): TerrainType? {
     return rotatedTerrains[direction] // Gibt den TerrainType für die angegebene Richtung zurück
 }
 
-fun Tile.getTerrainAtOrNull(direction: MeeplePosition?): TerrainType? {
-    return direction?.let {
-        when (it) {
-            MeeplePosition.N -> getRotatedTerrains()["N"]
-            MeeplePosition.E  -> getRotatedTerrains()["E"]
-            MeeplePosition.S -> getRotatedTerrains()["S"]
-            MeeplePosition.W  -> getRotatedTerrains()["W"]
-            MeeplePosition.C -> TerrainType.MONASTERY
+fun Tile.getTerrainAtOrNull(pos: MeeplePosition): TerrainType? {
+    // Zuerst die Rotationslogik für N, E, S, W wiederverwenden
+    val terrains = getRotatedTerrains()
+    return when (pos) {
+        MeeplePosition.N -> terrains["N"]
+        MeeplePosition.E -> terrains["E"]
+        MeeplePosition.S -> terrains["S"]
+        MeeplePosition.W -> terrains["W"]
+        MeeplePosition.C -> when {
+            // Monastery sitzt immer in der Mitte
+            hasMonastery -> TerrainType.MONASTERY
+
+            // gerade durchgehende Straße West↔Ost
+            terrains["W"] == TerrainType.ROAD && terrains["E"] == TerrainType.ROAD -> TerrainType.ROAD
+            // gerade durchgehende Straße Nord↔Süd
+            terrains["N"] == TerrainType.ROAD && terrains["S"] == TerrainType.ROAD -> TerrainType.ROAD
+
+            // zweigeteilte Stadtstücke, z.B. N↔E, E↔S, S↔W, W↔N
+            terrains["N"] == TerrainType.CITY && terrains["E"] == TerrainType.CITY -> TerrainType.CITY
+            terrains["E"] == TerrainType.CITY && terrains["S"] == TerrainType.CITY -> TerrainType.CITY
+            terrains["S"] == TerrainType.CITY && terrains["W"] == TerrainType.CITY -> TerrainType.CITY
+            terrains["W"] == TerrainType.CITY && terrains["N"] == TerrainType.CITY -> TerrainType.CITY
+
             else -> null
         }
     }

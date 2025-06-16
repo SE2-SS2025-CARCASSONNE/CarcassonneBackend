@@ -3,7 +3,7 @@ package com.carcassonne.backend.model
 data class Meeple(
     val id: String,                 // Eindeutige ID für jeden Meeple
     val playerId: String,           // ID des Spielers, dem der Meeple gehört
-    var type: MeepleType? = null,   // Erst beim Setzen zugewiesen
+    // var type: MeepleType? = null,   // Erst beim Setzen zugewiesen, brauchen wir wahrscheinlich gar nicht.
     var tileId: String? = null,     // ID der Kachel, auf der der Meeple platziert ist
     var position: MeeplePosition? = null // Position des Meeples auf der Kachel
 )

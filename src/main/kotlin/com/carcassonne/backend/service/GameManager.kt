@@ -322,6 +322,7 @@ class GameManager {
         }
 
         //game.nextPlayer() move to endTurn logic
+        game.status = GamePhase.MEEPLE_PLACEMENT
         return game
     }
 
@@ -608,16 +609,18 @@ class GameManager {
         return game
     }
 
-    private fun isValidMeeplePosition(tile: Tile, position: MeeplePosition): Boolean {
-        if (position == MeeplePosition.C) {
-            return tile.isMonastery()
+    private fun isValidMeeplePosition(tile: Tile, pos: MeeplePosition): Boolean {
+        val terrain = tile.getTerrainAtOrNull(pos) ?: return false
+        return when (pos) {
+            MeeplePosition.C -> terrain in listOf(
+                TerrainType.MONASTERY,
+                TerrainType.ROAD,
+                TerrainType.CITY
+            )
+            else -> terrain == TerrainType.ROAD || terrain == TerrainType.CITY
         }
-
-        val rotatedTerrains = tile.getRotatedTerrains()
-        val terrain = rotatedTerrains[position.name] ?: return false
-
-        return terrain == TerrainType.CITY || terrain == TerrainType.ROAD
     }
+
 
     fun getConnectedFeatureTiles(game: GameState, startTile: Tile, startPosition: MeeplePosition): List<Position> {
         val visited = mutableSetOf<Position>()
