@@ -2,9 +2,9 @@ package com.carcassonne.backend.controller
 
 import com.carcassonne.backend.model.GameMessage
 import com.carcassonne.backend.model.GamePhase
-import com.carcassonne.backend.model.Meeple
+import com.carcassonne.backend.model.GameState
 import com.carcassonne.backend.model.Position
-import com.carcassonne.backend.model.MeeplePosition
+import com.carcassonne.backend.model.Tile
 import com.carcassonne.backend.repository.GameRepository
 import com.carcassonne.backend.service.GameManager
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -271,6 +271,12 @@ class GameWebSocketController(
                 }
             }
 
+            "skip_meeple" -> {
+                val game = gameManager.getGame(msg.gameId)
+                val lastPlacedTile = game.board.entries.last().value
+                finalizeTurn(game, lastPlacedTile)
+            }
+
             "calculate_score" -> {
                 try {
                     val game = gameManager.getGame(msg.gameId)
@@ -332,5 +338,25 @@ class GameWebSocketController(
                 messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
             }
         }
+    }
+
+    private fun finalizeTurn(game: GameState, lastTile: Tile) {
+        game.status = GamePhase.SCORING
+        gameManager.calculateScore(game.gameId, lastTile)
+        game.status = GamePhase.TILE_PLACEMENT
+        game.nextPlayer()
+
+        val scorePayload = mapOf(
+            "type" to "score_update",
+            "scores" to game.players.map { p ->
+                mapOf(
+                    "player" to p.id,
+                    "score" to p.score,
+                    "remainingMeeple" to p.remainingMeeple
+                )
+            },
+            "nextPlayer" to game.getCurrentPlayer()
+        )
+        messagingTemplate.convertAndSend("/topic/game/${game.gameId}", scorePayload)
     }
 }
