@@ -93,6 +93,14 @@ class GameWebSocketController(
                 println(">>> [Backend] Sending game_started to /topic/game/${msg.gameId} with $payload")
                 messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
 
+                // Deck counter initialization
+                messagingTemplate.convertAndSend("/topic/game/${msg.gameId}",
+                    mapOf(
+                        "type" to "deck_update",
+                        "deckRemaining" to game.tileDeck.size
+                    )
+                )
+
                 val startTile = game.board[Position(0, 0)]
                     ?: throw IllegalStateException("Starting tile missing in game ${msg.gameId}")
 
