@@ -174,12 +174,11 @@ class GameManager {
                          else -> ""
                      }
 
-                     // 6. Punkte vergeben & Meeples entfernen
+                     // 6. Punkte vergeben, Meeples vom Brett entfernen und den Spielern zurückgeben
                      awardPoints(game, involvedMeeples, featureTiles.size, featureTypeString)
                      game.meeplesOnBoard.removeAll(involvedMeeples)
-                     game.nextPlayer()
-                     if(game.status == GamePhase.SCORING) {
-                         game.status = GamePhase.TILE_PLACEMENT
+                     involvedMeeples.forEach { meeple ->
+                         game.players.first { it.id == meeple.playerId }.remainingMeeple++
                      }
                  }
              }
