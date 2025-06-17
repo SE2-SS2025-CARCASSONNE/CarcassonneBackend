@@ -129,12 +129,22 @@ class GameWebSocketController(
                 // Enforce that only current player can act
                 val game  = authorizeTurn(msg) ?: return
 
+                if (game.tileDrawnThisTurn) {
+                    messagingTemplate.convertAndSend(
+                        "/topic/game/${msg.gameId}",
+                        mapOf("type" to "error",
+                            "message" to "You have already drawn a tile"))
+                    return
+                }
+
                 println(">>> [Backend] Handling DRAW_TILE for ${msg.player} in game ${msg.gameId}")
                 val drawnTile  = gameManager.drawTileForPlayer(msg.gameId) ?: run {
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}",
                         mapOf("type" to "error", "message" to "No more playable tiles"))
                     return
                 }
+
+                game.tileDrawnThisTurn = true
 
                 val validPlacementsJson = gameManager
                     .getAllValidPositions(msg.gameId, drawnTile)
@@ -338,11 +348,14 @@ class GameWebSocketController(
     private fun finalizeTurn(game: GameState, lastTile: Tile) {
         // Recalculate scores and return meeples back to players
         game.status = GamePhase.SCORING
+        println(">>> finalize turn executed, now in scoring phase")
         gameManager.calculateScore(game.gameId, lastTile)
 
         // Turn completed -> back to tile placement & switch to next player
         game.status = GamePhase.TILE_PLACEMENT
+        println(">>> scoring completed, switching to next player, now in placement phase")
         game.nextPlayer()
+        game.tileDrawnThisTurn = false
 
         // Broadcast new scores, meeple counts and next player
         val scorePayload = mapOf(
@@ -369,6 +382,7 @@ class GameWebSocketController(
             )
             return null
         }
+        print("turn authorized")
         return game
     }
 }
