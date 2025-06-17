@@ -118,9 +118,6 @@ class GameWebSocketController(
             }
 
             "DRAW_TILE" -> {
-                // Enforce that only current player can act
-                authorizeTurn(msg) ?: return
-
                 println(">>> [Backend] Handling DRAW_TILE for ${msg.player} in game ${msg.gameId}")
                 val drawnTile = gameManager.drawTileForPlayer(msg.gameId)
 
@@ -153,8 +150,6 @@ class GameWebSocketController(
             }
 
             "place_tile" -> {
-                authorizeTurn(msg) ?: return
-
                 try {
                     // 1) Stein im GameManager platzieren (kann null liefern, falls ungültig)
                     val game = gameManager.placeTile(
@@ -210,8 +205,6 @@ class GameWebSocketController(
             }
 
             "place_meeple" -> {
-                authorizeTurn(msg) ?: return
-
                 // 1) Meeple aus dem Message-Objekt holen oder gleich Error zurück
                 val meeple = msg.meeple ?: run {
                     messagingTemplate.convertAndSend(
