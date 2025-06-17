@@ -118,38 +118,50 @@ class GameWebSocketController(
             }
 
             "DRAW_TILE" -> {
+                // Enforce that only current player can act
+                val game  = authorizeTurn(msg) ?: return
+
                 println(">>> [Backend] Handling DRAW_TILE for ${msg.player} in game ${msg.gameId}")
-                val drawnTile = gameManager.drawTileForPlayer(msg.gameId)
+                val drawnTile  = gameManager.drawTileForPlayer(msg.gameId) ?: run {
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}",
+                        mapOf("type" to "error", "message" to "No more playable tiles"))
+                    return
+                }
 
-                if (drawnTile != null) {
-                    val validPlacements = gameManager.getAllValidPositions(msg.gameId!!, drawnTile)
-
-                    val validPlacementsJson = validPlacements.map { (pos, rotation, _) ->
+                val validPlacementsJson = gameManager
+                    .getAllValidPositions(msg.gameId, drawnTile)
+                    .map { (pos, rotation, _) ->
                         mapOf(
                             "position" to mapOf("x" to pos.x, "y" to pos.y),
                             "rotation" to rotation.name
                         )
                     }
 
-                    val payload = mapOf(
-                        "type" to "TILE_DRAWN",
-                        "tile" to drawnTile,
-                        "validPlacements" to validPlacementsJson
-                    )
+                val payload = mapOf(
+                    "type"            to "TILE_DRAWN",
+                    "tile"            to drawnTile,
+                    "validPlacements" to validPlacementsJson
+                )
 
-                    println("Valid placements for ${drawnTile.id}: $validPlacementsJson")
-                    println(">>> Sending TILE_DRAWN to /topic/game/${msg.gameId}")
-                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
-                } else {
-                    val error = mapOf(
-                        "type" to "error",
-                        "message" to "No more playable tiles"
+                println("Valid placements for ${drawnTile.id}: $validPlacementsJson")
+                println("Deck now has ${game.tileDeck.size} tiles left")
+
+                // Private drawn tile update only to current player
+                messagingTemplate.convertAndSendToUser(msg.player,"/queue/private", payload)
+
+                // Public deck counter update to all players
+                messagingTemplate.convertAndSend("/topic/game/${msg.gameId}",
+                    mapOf(
+                        "type" to "deck_update",
+                        "deckRemaining" to game.tileDeck.size
                     )
-                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
-                }
+                )
             }
 
             "place_tile" -> {
+                // Enforce that only current player can act
+                authorizeTurn(msg) ?: return
+
                 try {
                     // 1) Stein im GameManager platzieren (kann null liefern, falls ungültig)
                     val game = gameManager.placeTile(
@@ -205,6 +217,9 @@ class GameWebSocketController(
             }
 
             "place_meeple" -> {
+                // Enforce that only current player can act
+                authorizeTurn(msg) ?: return
+
                 // 1) Meeple aus dem Message-Objekt holen oder gleich Error zurück
                 val meeple = msg.meeple ?: run {
                     messagingTemplate.convertAndSend(
