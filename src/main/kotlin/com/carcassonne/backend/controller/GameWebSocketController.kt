@@ -2,9 +2,9 @@ package com.carcassonne.backend.controller
 
 import com.carcassonne.backend.model.GameMessage
 import com.carcassonne.backend.model.GamePhase
-import com.carcassonne.backend.model.Meeple
+import com.carcassonne.backend.model.GameState
 import com.carcassonne.backend.model.Position
-import com.carcassonne.backend.model.MeeplePosition
+import com.carcassonne.backend.model.Tile
 import com.carcassonne.backend.repository.GameRepository
 import com.carcassonne.backend.service.GameManager
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -93,6 +93,14 @@ class GameWebSocketController(
                 println(">>> [Backend] Sending game_started to /topic/game/${msg.gameId} with $payload")
                 messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
 
+                // Deck counter initialization
+                messagingTemplate.convertAndSend("/topic/game/${msg.gameId}",
+                    mapOf(
+                        "type" to "deck_update",
+                        "deckRemaining" to game.tileDeck.size
+                    )
+                )
+
                 val startTile = game.board[Position(0, 0)]
                     ?: throw IllegalStateException("Starting tile missing in game ${msg.gameId}")
 
@@ -118,38 +126,60 @@ class GameWebSocketController(
             }
 
             "DRAW_TILE" -> {
+                // Enforce that only current player can act
+                val game  = authorizeTurn(msg) ?: return
+
+                if (game.tileDrawnThisTurn) {
+                    messagingTemplate.convertAndSend(
+                        "/topic/game/${msg.gameId}",
+                        mapOf("type" to "error",
+                            "message" to "You have already drawn a tile"))
+                    return
+                }
+
                 println(">>> [Backend] Handling DRAW_TILE for ${msg.player} in game ${msg.gameId}")
-                val drawnTile = gameManager.drawTileForPlayer(msg.gameId)
+                val drawnTile  = gameManager.drawTileForPlayer(msg.gameId) ?: run {
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}",
+                        mapOf("type" to "error", "message" to "No more playable tiles"))
+                    return
+                }
 
-                if (drawnTile != null) {
-                    val validPlacements = gameManager.getAllValidPositions(msg.gameId!!, drawnTile)
+                game.tileDrawnThisTurn = true
 
-                    val validPlacementsJson = validPlacements.map { (pos, rotation, _) ->
+                val validPlacementsJson = gameManager
+                    .getAllValidPositions(msg.gameId, drawnTile)
+                    .map { (pos, rotation, _) ->
                         mapOf(
                             "position" to mapOf("x" to pos.x, "y" to pos.y),
                             "rotation" to rotation.name
                         )
                     }
 
-                    val payload = mapOf(
-                        "type" to "TILE_DRAWN",
-                        "tile" to drawnTile,
-                        "validPlacements" to validPlacementsJson
-                    )
+                val payload = mapOf(
+                    "type"            to "TILE_DRAWN",
+                    "tile"            to drawnTile,
+                    "validPlacements" to validPlacementsJson
+                )
 
-                    println("Valid placements for ${drawnTile.id}: $validPlacementsJson")
-                    println(">>> Sending TILE_DRAWN to /topic/game/${msg.gameId}")
-                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
-                } else {
-                    val error = mapOf(
-                        "type" to "error",
-                        "message" to "No more playable tiles"
+                println("Valid placements for ${drawnTile.id}: $validPlacementsJson")
+                println("Deck now has ${game.tileDeck.size} tiles left")
+
+                // Private drawn tile update only to current player
+                messagingTemplate.convertAndSendToUser(msg.player,"/queue/private", payload)
+
+                // Public deck counter update to all players
+                messagingTemplate.convertAndSend("/topic/game/${msg.gameId}",
+                    mapOf(
+                        "type" to "deck_update",
+                        "deckRemaining" to game.tileDeck.size
                     )
-                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
-                }
+                )
             }
 
             "place_tile" -> {
+                // Enforce that only current player can act
+                authorizeTurn(msg) ?: return
+
                 try {
                     // 1) Stein im GameManager platzieren (kann null liefern, falls ungültig)
                     val game = gameManager.placeTile(
@@ -205,6 +235,9 @@ class GameWebSocketController(
             }
 
             "place_meeple" -> {
+                // Enforce that only current player can act
+                authorizeTurn(msg) ?: return
+
                 // 1) Meeple aus dem Message-Objekt holen oder gleich Error zurück
                 val meeple = msg.meeple ?: run {
                     messagingTemplate.convertAndSend(
@@ -262,6 +295,11 @@ class GameWebSocketController(
                         "gamePhase"       to game.status.name
                     )
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
+
+                    // Trigger scoring & next player
+                    val placedTile = tileEntry.value
+                    finalizeTurn(game, placedTile)
+
                 } else {
                     // 7) Ungültige Platzierung oder falscher Spieler
                     messagingTemplate.convertAndSend(
@@ -271,37 +309,10 @@ class GameWebSocketController(
                 }
             }
 
-            "calculate_score" -> {
-                try {
-                    val game = gameManager.getGame(msg.gameId)
-                    val tile = msg.tile
-
-                    if (tile == null) {
-                        val error = mapOf(
-                            "type" to "error",
-                            "message" to "Tile required for scoring"
-                        )
-                        messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
-                        return
-                    }
-
-                    // Setze Spielstatus SCORING – falls nicht schon geschehen
-                    game.status = GamePhase.SCORING
-
-                    // Punkte berechnen
-                    gameManager.calculateScore(msg.gameId, tile)
-
-                    // Scores an alle Clients senden
-                    val payload = mapOf(
-                        "type" to "score_update",
-                        "scores" to game.players.map { mapOf("player" to it.id, "score" to it.score) }
-                    )
-                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
-
-                } catch (e: Exception) {
-                    val error = mapOf("type" to "error", "message" to "Scoring failed: ${e.message}")
-                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", error)
-                }
+            "skip_meeple" -> {
+                val game = authorizeTurn(msg) ?: return
+                val placedTile = game.board.entries.last().value
+                finalizeTurn(game, placedTile)
             }
 
             "end_game" -> {
@@ -332,5 +343,47 @@ class GameWebSocketController(
                 messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
             }
         }
+    }
+
+    private fun finalizeTurn(game: GameState, lastTile: Tile) {
+        // Recalculate scores and return meeples back to players
+        game.status = GamePhase.SCORING
+        println(">>> finalize turn executed, now in scoring phase")
+        gameManager.calculateScore(game.gameId, lastTile)
+
+        // Turn completed -> back to tile placement & switch to next player
+        game.status = GamePhase.TILE_PLACEMENT
+        println(">>> scoring completed, switching to next player, now in placement phase")
+        game.nextPlayer()
+        game.tileDrawnThisTurn = false
+
+        // Broadcast new scores, meeple counts and next player
+        val scorePayload = mapOf(
+            "type" to "score_update",
+            "scores" to game.players.map { p ->
+                mapOf(
+                    "player" to p.id,
+                    "score" to p.score,
+                    "remainingMeeple" to p.remainingMeeple
+                )
+            },
+            "nextPlayer" to game.getCurrentPlayer(),
+            "gamePhase"  to game.status.name
+        )
+        messagingTemplate.convertAndSend("/topic/game/${game.gameId}", scorePayload)
+    }
+
+    private fun authorizeTurn(msg: GameMessage): GameState? {
+        // Enforce that only the current player can act
+        val game = gameManager.getGame(msg.gameId)
+        if (msg.player != game.getCurrentPlayer()) {
+            messagingTemplate.convertAndSend(
+                "/topic/game/${msg.gameId}",
+                mapOf("type" to "error", "message" to "Not your turn")
+            )
+            return null
+        }
+        print("turn authorized")
+        return game
     }
 }
