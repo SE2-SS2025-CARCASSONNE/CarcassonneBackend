@@ -8,7 +8,8 @@ data class GameState(
     var status: GamePhase = GamePhase.WAITING,
     var discardedTiles: MutableList<Tile> = mutableListOf(),
     var tileDeck: MutableList<Tile> = mutableListOf(), // The tile deck can be managed here.
-    val meeplesOnBoard: MutableList<Meeple> = mutableListOf() // Liste der platzierten Meeples
+    val meeplesOnBoard: MutableList<Meeple> = mutableListOf(), // Liste der platzierten Meeples
+    var tileDrawnThisTurn: Boolean = false
 ) {
     // Switch to the next player
     fun nextPlayer(): String {
@@ -46,7 +47,7 @@ data class GameState(
     // Add a player to the game
     fun addPlayer(player: String) {
         if (status == GamePhase.WAITING && players.size < 4) {
-            val player = Player(player,0,8,0)
+            val player = Player(player,0,7,0)
             players.add(player)
         } else {
             throw IllegalStateException("Game already started or max players reached")
