@@ -367,7 +367,8 @@ class GameWebSocketController(
                     "remainingMeeple" to p.remainingMeeple
                 )
             },
-            "nextPlayer" to game.getCurrentPlayer()
+            "nextPlayer" to game.getCurrentPlayer(),
+            "gamePhase"  to game.status.name
         )
         messagingTemplate.convertAndSend("/topic/game/${game.gameId}", scorePayload)
     }
