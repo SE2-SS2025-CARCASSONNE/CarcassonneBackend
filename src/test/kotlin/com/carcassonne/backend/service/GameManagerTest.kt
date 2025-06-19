@@ -608,7 +608,156 @@ class GameManagerTest {
         assertEquals(0, game.players[0].score)
         assertTrue(game.meeplesOnBoard.any { it.id == "m1" })
     }
+    @Test
+    fun `score completed monastery but place monestary not at last`() {
+        val gameId = "scoring-test-monastery-different-order"
+        val game = gameManager.createGameWithHost(gameId, "Player1")
 
+        game.addPlayer("Player2")
+        game.startGame()
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // 1. Start-Tile bei (0,0) bereits platziert mit (CITY, ROAD, FIELD, ROAD)
+
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "start-tile",
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainSouth = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(0, 1)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "tile-east",
+                terrainWest = TerrainType.FIELD, // Verbindung zu start-tile
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainSouth = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(1, 1)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "tile-north",
+                terrainSouth = TerrainType.FIELD, // Verbindung zu tile-east
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(2, 1)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "tile-west",
+                terrainEast = TerrainType.FIELD, // Verbindung zu tile-north
+                terrainNorth = TerrainType.FIELD,
+                terrainSouth = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(0, 2)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        // Kloster-Tile in der Mitte (1,2)
+        val monasteryTile = Tile(
+            id = "monastery-tile",
+            hasMonastery = true,
+            terrainNorth = TerrainType.FIELD, // Verbindung zu tile-north-2
+            terrainEast = TerrainType.FIELD, // Verbindung zu tile-east-2
+            terrainSouth = TerrainType.FIELD, // Verbindung zu tile-east
+            terrainWest = TerrainType.FIELD, // Verbindung zu tile-west
+            tileRotation = TileRotation.NORTH,
+            position = Position(1, 2)
+        )
+        gameManager.placeTile(gameId, monasteryTile, "Player1")
+
+        //  Meeple platzieren
+        gameManager.placeMeeple(
+            gameId,
+            "Player1",
+            Meeple(id = "m1", playerId = "Player1", tileId = "monastery-tile"),
+            MeeplePosition.C
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "tile-east-2",
+                terrainWest = TerrainType.FIELD, // Verbindung zu tile-north
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainSouth = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(2, 2)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "tile-north-2",
+                terrainSouth = TerrainType.FIELD, // Verbindung zu tile-north
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(0, 3)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+
+        gameManager.placeTile(gameId,
+            Tile(
+                id = "tile-north-3",
+                terrainSouth = TerrainType.FIELD, // Verbindung zu tile-north
+                terrainNorth = TerrainType.FIELD,
+                terrainEast = TerrainType.FIELD,
+                terrainWest = TerrainType.FIELD,
+                tileRotation = TileRotation.NORTH,
+                position = Position(1, 3)
+            ),
+            "Player1"
+        )
+        game.status = GamePhase.TILE_PLACEMENT
+        val last_tile = Tile(
+            id = "tile-south-west",
+            terrainSouth = TerrainType.FIELD, // Verbindung zu tile-north
+            terrainNorth = TerrainType.FIELD,
+            terrainEast = TerrainType.FIELD,
+            terrainWest = TerrainType.FIELD,
+            tileRotation = TileRotation.NORTH,
+            position = Position(2, 3)
+        )
+        gameManager.placeTile(gameId, last_tile, "Player1")
+
+
+        // Scoring
+        game.status = GamePhase.SCORING
+        gameManager.calculateScore(gameId, last_tile)
+
+        // Assert
+        assertEquals(9, game.players[0].score) // 8 Nachbarn + Kloster selbst
+        assertTrue(game.meeplesOnBoard.none { it.id == "m1" })
+    }
     @Test
     fun `score completed monastery`() {
         val gameId = "scoring-test-monastery"
