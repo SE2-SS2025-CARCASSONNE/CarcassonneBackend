@@ -235,59 +235,63 @@ class GameWebSocketController(
             }
 
             "place_meeple" -> {
-                // Enforce that only current player can act
+                // 0) Nur aktueller Spieler darf diese Nachricht auslösen
                 authorizeTurn(msg) ?: return
 
-                // 1) Meeple aus dem Message-Objekt holen oder gleich Error zurück
+                // 1) Meeple-Daten validieren
                 val meeple = msg.meeple ?: run {
-                    messagingTemplate.convertAndSend(
-                        "/topic/game/${msg.gameId}",
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player, "/queue/private",
                         mapOf("type" to "error", "message" to "Invalid meeple placement data")
                     )
                     return
                 }
 
-                // 2) Position einmal auf null prüfen und in ein val packen
+                // 2) Position existiert?
                 val meeplePos = meeple.position ?: run {
-                    messagingTemplate.convertAndSend(
-                        "/topic/game/${msg.gameId}",
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player, "/queue/private",
                         mapOf("type" to "error", "message" to "Invalid meeple position")
                     )
                     return
                 }
 
-                // 3) Die Platzierung tatsächlich durchführen
-                val game = gameManager.placeMeeple(
-                    gameId   = msg.gameId,
-                    playerId = msg.player,
-                    meeple   = meeple,
-                    position = meeplePos
-                )
+                // 3) Versuch, im GameManager zu platzieren (kann Exception werfen)
+                val game = try {
+                    gameManager.placeMeeple(
+                        gameId   = msg.gameId!!,
+                        playerId = msg.player!!,
+                        meeple   = meeple,
+                        position = meeplePos
+                    )
+                } catch (e: Exception) {
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player, "/queue/private",
+                        mapOf("type" to "error", "message" to e.message.orEmpty())
+                    )
+                    return
+                }
 
                 if (game != null) {
+                    // 4) Persistenter Status
                     gameRepository.updateStatusByGameCode(
                         msg.gameId,
                         game.status.name
                     )
 
-                    // 4) Spieler holen, um remainingMeeple zu liefern
+                    // 5) Daten für public-Update zusammenstellen
                     val placingPlayer = game.players.first { it.id == msg.player }
-
-                    // 5) Aus dem Board die Position der betroffenen Kachel extrahieren
-                    val tileEntry = game.board.entries.first { (_, tile) ->
-                        tile.id == meeple.tileId
-                    }
+                    val tileEntry = game.board.entries.first { it.value.id == meeple.tileId }
                     val tilePos = tileEntry.key
 
-                    // 6) Payload bauen und senden
                     val payload = mapOf(
                         "type"            to "meeple_placed",
                         "meeple"          to mapOf(
                             "id"       to meeple.id,
                             "playerId" to meeple.playerId,
                             "tileId"   to meeple.tileId,
-                            "position" to meeplePos.name, // N/E/S/W/C auf der Kachel
-                            "x"        to tilePos.x,      // Board-Koordinate
+                            "position" to meeplePos.name,
+                            "x"        to tilePos.x,
                             "y"        to tilePos.y
                         ),
                         "player"          to msg.player,
@@ -296,14 +300,13 @@ class GameWebSocketController(
                     )
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
 
-                    // Trigger scoring & next player
-                    val placedTile = tileEntry.value
-                    finalizeTurn(game, placedTile)
+                    // 6) Runde abschließen
+                    finalizeTurn(game, tileEntry.value)
 
                 } else {
-                    // 7) Ungültige Platzierung oder falscher Spieler
-                    messagingTemplate.convertAndSend(
-                        "/topic/game/${msg.gameId}",
+                    // 7) Ungültige Platzierung (anderer Grund)
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player, "/queue/private",
                         mapOf("type" to "error", "message" to "Invalid meeple placement or not your turn")
                     )
                 }
