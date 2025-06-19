@@ -522,8 +522,13 @@ class GameManager {
                     openEdges++
                 } else {
                     val neighborTerrains = neighbor.getRotatedTerrains()
-                    if (neighborTerrains[opposite] == TerrainType.CITY) {
+                    if (neighborTerrains[opposite] == TerrainType.CITY && terrains[dir] == TerrainType.CITY) {
+                        if (neighbor.id == currentTile.id && dir != opposite) continue
                         queue.add(neighborPos to dir)
+
+
+                    //  if (neighborTerrains[opposite] == TerrainType.CITY) {
+                  //      queue.add(neighborPos to dir)
                     } else {
                         openEdges++ // Adjacent terrain does not match
                     }
