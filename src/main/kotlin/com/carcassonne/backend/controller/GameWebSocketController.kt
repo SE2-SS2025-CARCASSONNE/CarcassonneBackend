@@ -122,7 +122,6 @@ class GameWebSocketController(
                 )
                 println(">>> [Backend] Sending initial board_update: $boardUpdate")
                 messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", boardUpdate)
-                messagingTemplate.convertAndSendToUser(msg.player, "/queue/private", boardUpdate)
             }
 
             "DRAW_TILE" -> {
@@ -130,8 +129,9 @@ class GameWebSocketController(
                 val game  = authorizeTurn(msg) ?: return
 
                 if (game.tileDrawnThisTurn) {
-                    messagingTemplate.convertAndSend(
-                        "/topic/game/${msg.gameId}",
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player,
+                        "/queue/private",
                         mapOf("type" to "error",
                             "message" to "You have already drawn a tile"))
                     return
@@ -351,12 +351,10 @@ class GameWebSocketController(
     private fun finalizeTurn(game: GameState, lastTile: Tile) {
         // Recalculate scores and return meeples back to players
         game.status = GamePhase.SCORING
-        println(">>> finalize turn executed, now in scoring phase")
         gameManager.calculateScore(game.gameId, lastTile)
 
         // Turn completed -> back to tile placement & switch to next player
         game.status = GamePhase.TILE_PLACEMENT
-        println(">>> scoring completed, switching to next player, now in placement phase")
         game.nextPlayer()
         game.tileDrawnThisTurn = false
 
@@ -380,13 +378,13 @@ class GameWebSocketController(
         // Enforce that only the current player can act
         val game = gameManager.getGame(msg.gameId)
         if (msg.player != game.getCurrentPlayer()) {
-            messagingTemplate.convertAndSend(
-                "/topic/game/${msg.gameId}",
+            messagingTemplate.convertAndSendToUser(
+                msg.player,
+                "/queue/private",
                 mapOf("type" to "error", "message" to "Not your turn")
             )
             return null
         }
-        print("turn authorized")
         return game
     }
 }
