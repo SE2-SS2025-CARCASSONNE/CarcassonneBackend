@@ -118,7 +118,32 @@ class GameManager {
         println(" No valid placement found for ${tile.id}")
         return false
     }
+    fun findAdjacentMonasteryTile(game: GameState, placedTile: Tile): Tile? {
+        val centerPos = placedTile.position
+            ?: throw IllegalArgumentException("placedTile.position muss gesetzt sein")
 
+        // Alle acht Richtungen (N, NE, E, SE, S, SW, W, NW)
+        val neighborOffsets = listOf(
+            Pair(0, 1),  // N
+            Pair(1, 1),  // NE
+            Pair(1, 0),  // E
+            Pair(1, -1), // SE
+            Pair(0, -1), // S
+            Pair(-1, -1),// SW
+            Pair(-1, 0), // W
+            Pair(-1, 1)  // NW
+        )
+
+        for ((dx, dy) in neighborOffsets) {
+            val neighborPos = Position(centerPos.x + dx, centerPos.y + dy)
+            val neighborTile = game.board[neighborPos]
+            if (neighborTile?.hasMonastery == true) {
+                return neighborTile
+            }
+        }
+
+        return null
+    }
      fun calculateScore(gameId: String, placedTile: Tile) {
          val game = games[gameId] ?: throw IllegalArgumentException("Game $gameId is not registered")
 
@@ -180,6 +205,34 @@ class GameManager {
                      involvedMeeples.forEach { meeple ->
                          game.players.first { it.id == meeple.playerId }.remainingMeeple++
                      }
+                 }
+             }
+         }
+         val monasteryTile = findAdjacentMonasteryTile(game, placedTile)
+         if (monasteryTile != null) {
+             val featureTiles = getConnectedFeatureTiles(
+                 game = game,
+                 startTile = monasteryTile,
+                 startPosition = MeeplePosition.N)
+             val isCompletedMonestary = isMonasteryComplete(game.board, monasteryTile.position!!)
+             if (isCompletedMonestary) {
+                 // 5. Alle Meeples auf dem Feature sammeln
+                 val involvedMeeples = featureTiles.flatMap { tilePos ->
+                     game.board[tilePos]?.let { tile ->
+                         game.meeplesOnBoard.filter { meeple ->
+                             // Prüfe, dass der Meeple auf dem Feature-Typ liegt
+                             meeple.position?.let { meepleDir ->
+                                 tile.getTerrainAtOrNull(meepleDir) == TerrainType.MONASTERY
+                             } ?: false
+                         }
+                     } ?: emptyList()
+                 }.toMutableList()
+
+
+                 awardPoints(game, involvedMeeples, featureTiles.size, "MONASTERY")
+                 game.meeplesOnBoard.removeAll(involvedMeeples)
+                 involvedMeeples.forEach { meeple ->
+                     game.players.first { it.id == meeple.playerId }.remainingMeeple++
                  }
              }
          }
