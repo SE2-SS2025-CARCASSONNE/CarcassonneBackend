@@ -238,7 +238,17 @@ class GameWebSocketController(
 
             "place_meeple" -> {
                 // 0) Nur aktueller Spieler darf diese Nachricht auslösen
-                authorizeTurn(msg) ?: return
+                val oldGame = authorizeTurn(msg) ?: return
+
+                // 0.5) Meeple Platzierung nur auf das aktuelle Tile erlauben
+                val lastTile = oldGame.board.entries.lastOrNull()?.value
+                if (lastTile != null && msg.meeple?.tileId != lastTile.id) {
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player, "/queue/private",
+                        mapOf("type" to "error", "message" to "You can only place meeples on the current tile!")
+                    )
+                    return
+                }
 
                 // 1) Meeple-Daten validieren
                 val meeple = msg.meeple ?: run {
