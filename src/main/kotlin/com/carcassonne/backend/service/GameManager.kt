@@ -1,11 +1,14 @@
 package com.carcassonne.backend.service
 
 import com.carcassonne.backend.model.*
+import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Component
 import kotlin.random.Random
 
 @Component
-class GameManager {
+class GameManager(
+    private val messagingTemplate: SimpMessagingTemplate        // ⬅ add this
+) {
     private val games = mutableMapOf<String, GameState>()
 
     fun createGameWithHost(gameId: String, hostName: String): GameState {
@@ -87,8 +90,23 @@ class GameManager {
             }
         }
 
-        println(" No more playable tiles left.")
+        println(">>> No more playable tiles left.")
         game.finishGame()
+
+        val winnerId = endGame(gameId)
+        val scores = game.players.map {
+            mapOf("player" to it.id, "score" to it.score)
+        }
+
+        val payload = mapOf(
+            "type" to "game_over",
+            "winner" to winnerId,
+            "scores" to scores
+        )
+
+        println(">>> [Backend] Broadcasting game_over: $payload")
+        messagingTemplate.convertAndSend("/topic/game/$gameId", payload)
+
         return null
     }
 
