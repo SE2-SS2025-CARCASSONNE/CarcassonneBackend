@@ -314,6 +314,8 @@ class GameWebSocketController(
 
             "skip_meeple" -> {
                 val game = authorizeTurn(msg) ?: return
+                if (game.status != GamePhase.MEEPLE_PLACEMENT) return
+
                 val placedTile = game.board.entries.last().value
                 finalizeTurn(game, placedTile)
             }
@@ -351,7 +353,11 @@ class GameWebSocketController(
     private fun finalizeTurn(game: GameState, lastTile: Tile) {
         // Recalculate scores and return meeples back to players
         game.status = GamePhase.SCORING
+        val before = game.meeplesOnBoard.toList()
+
         gameManager.calculateScore(game.gameId, lastTile)
+        val after = game.meeplesOnBoard.toList()
+        val removedMeeples = before.filter { meeple -> meeple !in after }
 
         // Turn completed -> back to tile placement & switch to next player
         game.status = GamePhase.TILE_PLACEMENT
@@ -372,6 +378,15 @@ class GameWebSocketController(
             "gamePhase"  to game.status.name
         )
         messagingTemplate.convertAndSend("/topic/game/${game.gameId}", scorePayload)
+
+        if (removedMeeples.isNotEmpty()) {
+            val removedIds = removedMeeples.map { it.id }
+            val removePayload = mapOf(
+                "type" to "meeple_removed",
+                "ids"  to removedIds
+            )
+            messagingTemplate.convertAndSend("/topic/game/${game.gameId}", removePayload)
+        }
     }
 
     private fun authorizeTurn(msg: GameMessage): GameState? {
