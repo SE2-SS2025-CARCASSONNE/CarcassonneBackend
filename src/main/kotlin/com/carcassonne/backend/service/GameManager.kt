@@ -1,13 +1,11 @@
 package com.carcassonne.backend.service
 
 import com.carcassonne.backend.model.*
-import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Component
 import kotlin.random.Random
 
 @Component
 class GameManager(
-    private val messagingTemplate: SimpMessagingTemplate        // ⬅ add this
 ) {
     private val games = mutableMapOf<String, GameState>()
 
@@ -105,8 +103,6 @@ class GameManager(
         )
 
         println(">>> [Backend] Broadcasting game_over: $payload")
-        messagingTemplate.convertAndSend("/topic/game/$gameId", payload)
-
         return null
     }
 
