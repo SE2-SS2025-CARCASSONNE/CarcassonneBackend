@@ -2,7 +2,9 @@ package com.carcassonne.backend.controller
 
 import com.carcassonne.backend.entity.Game
 import com.carcassonne.backend.model.Tile
+import com.carcassonne.backend.model.dto.UserStatsDTO
 import com.carcassonne.backend.repository.GameRepository
+import com.carcassonne.backend.repository.UserRepository
 import com.carcassonne.backend.service.GameManager
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -17,7 +19,8 @@ import java.time.Instant
 @RequestMapping("/api/game")
 @Tag(name = "Game", description = "Game control endpoints")
 class GameController(
-    private val gameRepository: GameRepository, //Inject dependency via constructor
+    private val gameRepository: GameRepository, // Inject dependency via constructor
+    private val userRepository: UserRepository,
     private val gameManager: GameManager
 ) {
 
@@ -32,7 +35,7 @@ class GameController(
     @PostMapping("/create")
     fun createGame(
         @RequestBody request: CreateGameRequest,
-        @AuthenticationPrincipal user: UserDetails //Inject authenticated user
+        @AuthenticationPrincipal user: UserDetails // Inject authenticated user
     ): CreateGameResponse {
         val code = generateGameId()
 
@@ -47,7 +50,8 @@ class GameController(
 
         return CreateGameResponse(gameId = code)
     }
-    //Generate ID for Game
+
+    // Generate ID for Game
     private fun generateGameId(): String {
         val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
         return (1..6).map { chars.random() }.joinToString("")
@@ -62,5 +66,25 @@ class GameController(
         } else {
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(null)
         }
+    }
+
+    @Operation(summary = "Get stats for the logged-in user")
+    @GetMapping("/stats")
+    fun getUserStats(@AuthenticationPrincipal user: UserDetails): ResponseEntity<UserStatsDTO> {
+        val username = user.username
+
+        val totalGames = gameRepository.countFinishedGamesByUsername(username)
+        val totalWins = gameRepository.countWinsByUsername(username)
+        val winRatio = if (totalGames > 0) totalWins.toDouble() / totalGames else 0.0
+        val highScore = userRepository.findUserByUsername(username)?.highScore ?: 0
+
+        return ResponseEntity.ok(
+            UserStatsDTO(
+                totalGames = totalGames,
+                totalWins = totalWins,
+                winRatio = winRatio,
+                highScore = highScore
+            )
+        )
     }
 }
