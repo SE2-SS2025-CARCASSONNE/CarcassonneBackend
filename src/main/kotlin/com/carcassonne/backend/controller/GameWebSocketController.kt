@@ -177,29 +177,23 @@ class GameWebSocketController(
             }
 
             "place_tile" -> {
-                // Enforce that only current player can act
                 authorizeTurn(msg) ?: return
 
                 try {
-                    // 1) Stein im GameManager platzieren (kann null liefern, falls ungültig)
                     val game = gameManager.placeTile(
                         msg.gameId!!,
                         msg.tile!!,
                         msg.player!!
                     )
 
-                    // 2) Nur wenn das Spiel-Objekt zurückkam → Status in DB + Payload schicken
                     game?.let { g ->
-
-                        // Status (z. B. MEEPLE_PLACEMENT) persistent speichern
                         gameRepository.updateStatusByGameCode(
                             msg.gameId,
                             g.status.name
                         )
 
-                        // 3) Daten für Board-Update zusammenstellen
-                        val tile      = msg.tile!!
-                        val pos       = tile.position!!
+                        val tile = msg.tile!!
+                        val pos = tile.position!!
 
                         val tileJson = mapOf(
                             "id"           to tile.id,
@@ -220,11 +214,19 @@ class GameWebSocketController(
                             "gamePhase" to g.status.name
                         )
 
-                        // 4) An alle Clients senden
-                        messagingTemplate.convertAndSend(
-                            "/topic/game/${msg.gameId}",
-                            boardUpdate
-                        )
+                        messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", boardUpdate)
+
+                        if (g.tileDeck.isEmpty()) {
+                            println(">>> Game ended: no tiles left after place_tile")
+                            g.finishGame()
+                            val winnerId = gameManager.endGame(msg.gameId!!)
+                            val payload = mapOf(
+                                "type" to "game_over",
+                                "winner" to winnerId,
+                                "scores" to g.players.map { mapOf("player" to it.id, "score" to it.score) }
+                            )
+                            messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
+                        }
                     }
                 } catch (e: Exception) {
                     messagingTemplate.convertAndSend(
@@ -318,6 +320,19 @@ class GameWebSocketController(
 
                 val placedTile = game.board.entries.last().value
                 finalizeTurn(game, placedTile)
+
+                // After finalizing turn, check if game ended
+                if (game.tileDeck.isEmpty()) {
+                    println(">>> Game ended: no tiles left after skip_meeple")
+                    game.finishGame()
+                    val winnerId = gameManager.endGame(msg.gameId!!)
+                    val payload = mapOf(
+                        "type" to "game_over",
+                        "winner" to winnerId,
+                        "scores" to game.players.map { mapOf("player" to it.id, "score" to it.score) }
+                    )
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
+                }
             }
 
             "end_game" -> {
