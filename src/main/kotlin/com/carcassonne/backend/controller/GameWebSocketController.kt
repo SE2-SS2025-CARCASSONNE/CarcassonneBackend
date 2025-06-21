@@ -60,6 +60,7 @@ class GameWebSocketController(
                         "terrainEast" to tile.terrainEast,
                         "terrainSouth" to tile.terrainSouth,
                         "terrainWest" to tile.terrainWest,
+                        "terrainCenter" to tile.terrainCenter,
                         "tileRotation" to tile.tileRotation.name,
                         "hasMonastery" to tile.hasMonastery,
                         "hasShield" to tile.hasShield,
@@ -112,6 +113,7 @@ class GameWebSocketController(
                     "terrainEast"  to startTile.terrainEast,
                     "terrainSouth" to startTile.terrainSouth,
                     "terrainWest"  to startTile.terrainWest,
+                    "terrainCenter" to startTile.terrainCenter,
                     "tileRotation" to startTile.tileRotation.name,
                     "hasMonastery" to startTile.hasMonastery,
                     "hasShield"    to startTile.hasShield,
@@ -135,14 +137,14 @@ class GameWebSocketController(
                         msg.player,
                         "/queue/private",
                         mapOf("type" to "error",
-                            "message" to "You have already drawn a tile"))
+                            "message" to "You have already drawn a tile!"))
                     return
                 }
 
                 println(">>> [Backend] Handling DRAW_TILE for ${msg.player} in game ${msg.gameId}")
                 val drawnTile  = gameManager.drawTileForPlayer(msg.gameId) ?: run {
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}",
-                        mapOf("type" to "error", "message" to "No more playable tiles"))
+                        mapOf("type" to "error", "message" to "No more playable tiles!"))
                     return
                 }
 
@@ -183,9 +185,9 @@ class GameWebSocketController(
 
                 try {
                     val game = gameManager.placeTile(
-                        msg.gameId!!,
+                        msg.gameId,
                         msg.tile!!,
-                        msg.player!!
+                        msg.player
                     )
 
                     game?.let { g ->
@@ -194,8 +196,8 @@ class GameWebSocketController(
                             g.status.name
                         )
 
-                        val tile = msg.tile!!
-                        val pos = tile.position!!
+                        val tile = msg.tile
+                        val pos = tile.position
 
                         val tileJson = mapOf(
                             "id"           to tile.id,
@@ -203,10 +205,11 @@ class GameWebSocketController(
                             "terrainEast"  to tile.terrainEast,
                             "terrainSouth" to tile.terrainSouth,
                             "terrainWest"  to tile.terrainWest,
+                            "terrainCenter" to tile.terrainCenter,
                             "tileRotation" to tile.tileRotation.name,
                             "hasMonastery" to tile.hasMonastery,
                             "hasShield"    to tile.hasShield,
-                            "position"     to mapOf("x" to pos.x, "y" to pos.y)
+                            "position"     to mapOf("x" to pos?.x, "y" to pos?.y)
                         )
 
                         val boardUpdate = mapOf(
@@ -221,7 +224,7 @@ class GameWebSocketController(
                         if (g.tileDeck.isEmpty()) {
                             println(">>> Game ended: no tiles left after place_tile")
                             g.finishGame()
-                            val winnerId = gameManager.endGame(msg.gameId!!)
+                            val winnerId = gameManager.endGame(msg.gameId)
 
                             val dbGame = gameRepository.findByGameCode(msg.gameId)
                             if (dbGame != null) {
@@ -247,8 +250,9 @@ class GameWebSocketController(
                         }
                     }
                 } catch (e: Exception) {
-                    messagingTemplate.convertAndSend(
-                        "/topic/game/${msg.gameId}",
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player,
+                        "/queue/private",
                         mapOf("type" to "error", "message" to e.message)
                     )
                 }
@@ -256,7 +260,17 @@ class GameWebSocketController(
 
             "place_meeple" -> {
                 // 0) Nur aktueller Spieler darf diese Nachricht auslösen
-                authorizeTurn(msg) ?: return
+                val oldGame = authorizeTurn(msg) ?: return
+
+                // 0.5) Meeple Platzierung nur auf das aktuelle Tile erlauben
+                val lastTile = oldGame.board.entries.lastOrNull()?.value
+                if (lastTile != null && msg.meeple?.tileId != lastTile.id) {
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player, "/queue/private",
+                        mapOf("type" to "error", "message" to "You can only place it on the current tile!")
+                    )
+                    return
+                }
 
                 // 1) Meeple-Daten validieren
                 val meeple = msg.meeple ?: run {
@@ -271,7 +285,7 @@ class GameWebSocketController(
                 val meeplePos = meeple.position ?: run {
                     messagingTemplate.convertAndSendToUser(
                         msg.player, "/queue/private",
-                        mapOf("type" to "error", "message" to "Invalid meeple position")
+                        mapOf("type" to "error", "message" to "You can't place the meeple here!")
                     )
                     return
                 }
@@ -279,8 +293,8 @@ class GameWebSocketController(
                 // 3) Versuch, im GameManager zu platzieren (kann Exception werfen)
                 val game = try {
                     gameManager.placeMeeple(
-                        gameId   = msg.gameId!!,
-                        playerId = msg.player!!,
+                        gameId   = msg.gameId,
+                        playerId = msg.player,
                         meeple   = meeple,
                         position = meeplePos
                     )
@@ -327,7 +341,7 @@ class GameWebSocketController(
                     // 7) Ungültige Platzierung (anderer Grund)
                     messagingTemplate.convertAndSendToUser(
                         msg.player, "/queue/private",
-                        mapOf("type" to "error", "message" to "Invalid meeple placement or not your turn")
+                        mapOf("type" to "error", "message" to "Unknown game or placement error!")
                     )
                 }
             }
@@ -343,7 +357,7 @@ class GameWebSocketController(
                 if (game.tileDeck.isEmpty()) {
                     println(">>> Game ended: no tiles left after skip_meeple")
                     game.finishGame()
-                    val winnerId = gameManager.endGame(msg.gameId!!)
+                    val winnerId = gameManager.endGame(msg.gameId)
 
                     val dbGame = gameRepository.findByGameCode(msg.gameId)
                     if (dbGame != null) {
@@ -446,7 +460,7 @@ class GameWebSocketController(
             messagingTemplate.convertAndSendToUser(
                 msg.player,
                 "/queue/private",
-                mapOf("type" to "error", "message" to "Not your turn")
+                mapOf("type" to "error", "message" to "It's not your turn!")
             )
             return null
         }
