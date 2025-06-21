@@ -119,7 +119,7 @@ class GameManager(
         for (spot in potentialSpots) {
             for (rotation in TileRotation.values()) {
                 val rotatedTile = tile.copy(tileRotation = rotation, position = spot)
-                val valid = isValidPosition(game, rotatedTile, spot, rotation)
+                val valid = isValidPosition(game, rotatedTile, spot)
                 println(" - Trying ${tile.id} at $spot with $rotation: $valid")
                 if (valid) {
                     return true
@@ -176,19 +176,17 @@ class GameManager(
 
                  if (isCompleted) {
                      // 5. Alle Meeples auf dem Feature sammeln
-                     val involvedMeeples = featureTiles.flatMap { tilePos ->
-                         game.board[tilePos]?.let { tile ->
-                             game.meeplesOnBoard.filter { meeple ->
-                                 // Prüfe, dass der Meeple auf dem Feature-Typ liegt
-                                 meeple.position?.let { meepleDir ->
-                                     tile.getTerrainAtOrNull(meepleDir) == terrainType
-                                 } ?: false
-                             }
-                         } ?: emptyList()
+                     val involvedMeeples = game.meeplesOnBoard.filter { meeple ->
+                         val position = getTilePosition(game, meeple.tileId) ?: return@filter false
+                         if (position !in featureTiles) return@filter false
+
+                         meeple.position?.let { dir ->
+                             game.board[position]?.getTerrainAtOrNull(dir) == terrainType
+                         } ?: false
                      }.toMutableList()
 
                      val featureTypeString = when (terrainType) {
-                         TerrainType.CITY -> "CITY";
+                         TerrainType.CITY -> "CITY"
                          TerrainType.ROAD -> "ROAD"
                          TerrainType.MONASTERY -> "MONASTERY"
                          else -> ""
@@ -322,8 +320,8 @@ class GameManager(
         }
 
         // check whether tile.position is valid -> see helper function below
-        if (!isValidPosition(game, tile, tile.position, tile.tileRotation)){
-            throw IllegalArgumentException("Rotate the tile or pick a different position!")
+        if (!isValidPosition(game, tile, tile.position)){
+            throw IllegalArgumentException("You can't place the tile here!")
         }
         game.placeTile(tile, tile.position)
 
@@ -388,7 +386,7 @@ class GameManager(
         for (spot in potentialSpots) {
             for (rotation in TileRotation.values()) {
                 val rotatedTile = tile.copy(tileRotation = rotation, position = spot)
-                val isValid = isValidPosition(game, rotatedTile, spot, rotation)
+                val isValid = isValidPosition(game, rotatedTile, spot)
                 if (isValid) {
                     validPlacements.add(Triple(spot, rotation, true))
                 }
@@ -398,7 +396,7 @@ class GameManager(
         return validPlacements
     }
 
-    private fun isValidPosition(game: GameState, tile: Tile, position: Position?, tileRotation: TileRotation): Boolean {
+    private fun isValidPosition(game: GameState, tile: Tile, position: Position?): Boolean {
         if (position == null){
             throw IllegalArgumentException("Position can not be null")
         }
@@ -431,47 +429,6 @@ class GameManager(
         // Disallow isolated tiles except center
         return hasAdjacent || position == Position(0, 0)
     }
-
-    /* Use this method for debugging if tile placement ever breaks again
-    private fun isValidPosition(
-        game: GameState,
-        tile: Tile,
-        position: Position,
-        tileRotation: TileRotation
-    ): Boolean {
-
-        val terrains = tile.getRotatedTerrains()
-
-        val neighbors = listOf(
-            Position(position.x, position.y - 1) to Pair("N", "S"),
-            Position(position.x + 1, position.y) to Pair("E", "W"),
-            Position(position.x, position.y + 1) to Pair("S", "N"),
-            Position(position.x - 1, position.y) to Pair("W", "E")
-        )
-
-        var hasAdjacent = false
-
-        println("→ testing spot=$position, rot=$tileRotation (tile terrains=${terrains.values})")
-
-        for ((neighborPos, dirs) in neighbors) {
-            val (dir, oppositeDir) = dirs
-            val neighbor = game.board[neighborPos] ?: continue
-            hasAdjacent = true
-
-            val ours   = terrains[dir]!!
-            val theirs = neighbor.getRotatedTerrains()[oppositeDir]!!
-            println("    $dir @ $neighborPos: ours=$ours, theirs=$theirs")
-
-            if (ours != theirs) {
-                println("      ❌ mismatch on $dir; rejecting")
-                return false
-            }
-        }
-
-        val allowed = hasAdjacent || position == Position(0,0)
-        println("    ✓ all matched? $hasAdjacent, allowed=$allowed")
-        return allowed
-    }*/
 
     private fun isMonasteryComplete(board: Map<Position, Tile>, position: Position): Boolean {
         val adjacentOffsets = listOf(
@@ -580,14 +537,14 @@ class GameManager(
         val tile = game.board.entries.find { it.value.id == meeple.tileId }?.value
             ?: throw IllegalStateException("Tile not found on the board")
         if (!isValidMeeplePosition(tile, position)) {
-            throw IllegalStateException("Invalid meeple position")
+            throw IllegalStateException("You can't place the meeple here!")
         }
 
         // Prüfung auf bereits vorhandene Meeples im verbundenen Bereich
         val connectedTiles = getConnectedFeatureTiles(game, tile, position)
 
         if (isMeeplePresentOnFeature(game, connectedTiles)) {
-            throw IllegalStateException("Another meeple is already placed on this feature!") // Displayed to player in toast
+            throw IllegalStateException("Road or city is already occupied!") // Displayed to player in toast
         }
 
         // Meeple-Platzierung
@@ -668,9 +625,9 @@ class GameManager(
     private data class Edge(val pos: Position, val dir: String)
 
     private fun opposite(d: String) = when (d) {
-        "N" -> "S";
-        "S" -> "N";
-        "E" -> "W";
+        "N" -> "S"
+        "S" -> "N"
+        "E" -> "W"
         else -> "E" }
 
     private fun neighbor(p: Position, d: String) = when (d) {

@@ -183,9 +183,9 @@ class GameWebSocketController(
 
                 try {
                     val game = gameManager.placeTile(
-                        msg.gameId!!,
+                        msg.gameId,
                         msg.tile!!,
-                        msg.player!!
+                        msg.player
                     )
 
                     game?.let { g ->
@@ -194,8 +194,8 @@ class GameWebSocketController(
                             g.status.name
                         )
 
-                        val tile = msg.tile!!
-                        val pos = tile.position!!
+                        val tile = msg.tile
+                        val pos = tile.position
 
                         val tileJson = mapOf(
                             "id"           to tile.id,
@@ -207,7 +207,7 @@ class GameWebSocketController(
                             "tileRotation" to tile.tileRotation.name,
                             "hasMonastery" to tile.hasMonastery,
                             "hasShield"    to tile.hasShield,
-                            "position"     to mapOf("x" to pos.x, "y" to pos.y)
+                            "position"     to mapOf("x" to pos?.x, "y" to pos?.y)
                         )
 
                         val boardUpdate = mapOf(
@@ -222,7 +222,7 @@ class GameWebSocketController(
                         if (g.tileDeck.isEmpty()) {
                             println(">>> Game ended: no tiles left after place_tile")
                             g.finishGame()
-                            val winnerId = gameManager.endGame(msg.gameId!!)
+                            val winnerId = gameManager.endGame(msg.gameId)
                             val payload = mapOf(
                                 "type" to "game_over",
                                 "winner" to winnerId,
@@ -249,7 +249,7 @@ class GameWebSocketController(
                 if (lastTile != null && msg.meeple?.tileId != lastTile.id) {
                     messagingTemplate.convertAndSendToUser(
                         msg.player, "/queue/private",
-                        mapOf("type" to "error", "message" to "You can only place meeples on the current tile!")
+                        mapOf("type" to "error", "message" to "You can only place it on the current tile!")
                     )
                     return
                 }
@@ -267,7 +267,7 @@ class GameWebSocketController(
                 val meeplePos = meeple.position ?: run {
                     messagingTemplate.convertAndSendToUser(
                         msg.player, "/queue/private",
-                        mapOf("type" to "error", "message" to "You can't place meeples on this position!")
+                        mapOf("type" to "error", "message" to "You can't place the meeple here!")
                     )
                     return
                 }
@@ -275,8 +275,8 @@ class GameWebSocketController(
                 // 3) Versuch, im GameManager zu platzieren (kann Exception werfen)
                 val game = try {
                     gameManager.placeMeeple(
-                        gameId   = msg.gameId!!,
-                        playerId = msg.player!!,
+                        gameId   = msg.gameId,
+                        playerId = msg.player,
                         meeple   = meeple,
                         position = meeplePos
                     )
@@ -339,7 +339,7 @@ class GameWebSocketController(
                 if (game.tileDeck.isEmpty()) {
                     println(">>> Game ended: no tiles left after skip_meeple")
                     game.finishGame()
-                    val winnerId = gameManager.endGame(msg.gameId!!)
+                    val winnerId = gameManager.endGame(msg.gameId)
                     val payload = mapOf(
                         "type" to "game_over",
                         "winner" to winnerId,
