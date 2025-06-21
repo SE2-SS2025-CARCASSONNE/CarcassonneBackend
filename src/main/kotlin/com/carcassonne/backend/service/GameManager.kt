@@ -178,13 +178,25 @@ class GameManager(
                      // 5. Alle Meeples auf dem Feature sammeln
                      val startEdge = Edge(placedTile.position!!, direction.shortCode)
 
-                     val involvedMeeples = game.meeplesOnBoard.filter { meeple ->
-                         val pos = getTilePosition(game, meeple.tileId) ?: return@filter false
-                         val dir = meeple.position?.name ?: return@filter false
+                     val involvedMeeples = game.meeplesOnBoard
+                         .filter { meeple ->
+                             val pos = getTilePosition(game, meeple.tileId) ?: return@filter false
+                             val meeplePos = meeple.position    ?: return@filter false
+                             val tile = game.board[pos]    ?: return@filter false
+                             if (tile.getTerrainAtOrNull(meeplePos) != terrainType) return@filter false
 
-                         if (game.board[pos]?.getTerrainAtOrNull(meeple.position!!) != terrainType) return@filter false
-                         edgesConnected(game.board, startEdge, Edge(pos, dir), terrainType)
-                     }.toMutableList()
+                             if (meeplePos == MeeplePosition.C) {
+                                 true
+                             } else {
+                                 edgesConnected(
+                                     board  = game.board,
+                                     start  = startEdge,
+                                     target = Edge(pos, meeplePos.name),
+                                     type   = terrainType
+                                 )
+                             }
+                         }
+                         .toMutableList()
 
                      val featureTypeString = when (terrainType) {
                          TerrainType.CITY -> "CITY"
@@ -194,7 +206,7 @@ class GameManager(
                      }
 
                      // 6. Punkte vergeben, Meeples vom Brett entfernen und den Spielern zurückgeben
-                     awardPoints(game, involvedMeeples, featureTiles.size, featureTypeString)
+                     awardPoints(game, involvedMeeples, featureTiles.size, featureTypeString, featureTiles)
                      game.meeplesOnBoard.removeAll(involvedMeeples)
                      involvedMeeples.forEach { meeple ->
                          game.players.first { it.id == meeple.playerId }.remainingMeeple++
@@ -208,8 +220,9 @@ class GameManager(
         game: GameState,
         involvedMeeples: MutableList<Meeple>, //MutableList für Konsistenz
         basePoints: Int,  //Weniger Punkte, hilft bei Endgame Logik zum Beispiel ...
-        featureType: String //Berechnung für Monestary, Road, City
-         ) {
+        featureType: String, //Berechnung für Monestary, Road, City
+        featureTiles: List<Position>
+    ) {
     // Überprüfung ob Meeples vorhanden sind und Punkte vergeben werden können
     if (involvedMeeples.isEmpty()) {
         println("Keine Meeples für $featureType-Scoring")
@@ -237,9 +250,11 @@ class GameManager(
     // Punkteberechnung mit enum für Klarheit
     val pointsPerFeature = when (featureType) {
         "CITY" -> {
-            var points = basePoints * 2
             // Add shield bonus of 2 points for applicable city tiles
-            points
+            val shieldCount = featureTiles.count { pos ->
+                game.board[pos]?.hasShield == true
+            }
+            basePoints * 2 + shieldCount * 2
         }
         "ROAD" -> basePoints
         "MONASTERY" -> {
@@ -265,15 +280,18 @@ class GameManager(
         }
     }
 
-    // Punkte verteilen mit Spieler-Check
-    winners.forEach { playerId ->
-        val player = game.players.find { it.id == playerId } ?: run {
-            println("Fehler: Spieler $playerId existiert nicht")
-            return@forEach
+    // Nur ein eindeutiger Gewinner erhält Punkte; bei Gleichstand niemand
+    if (winners.size == 1) {
+        val winnerId = winners.first()
+        val player = game.players.find { it.id == winnerId }
+        if (player != null) {
+            player.score += pointsPerFeature
+            println("Punkte vergeben: $pointsPerFeature an $winnerId ($featureType)")
+        } else {
+            println("Fehler: Gewinner $winnerId existiert nicht")
         }
-
-        player.score += pointsPerFeature
-        println("Punkte vergeben: $pointsPerFeature an $playerId ($featureType)")
+    } else {
+        println("Gleichstand bei $featureType - keine Punkte vergeben")
     }
 
     // Debug-Info
