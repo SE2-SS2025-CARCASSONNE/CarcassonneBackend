@@ -155,7 +155,7 @@ class GameManager(
                  val featureTiles = getConnectedFeatureTiles(
                      game = game,
                      startTile = placedTile,
-                     startPosition = direction
+                     startPos = direction
                  )
 
                  // 4. Abschluss des Features prüfen
@@ -323,7 +323,7 @@ class GameManager(
 
         // check whether tile.position is valid -> see helper function below
         if (!isValidPosition(game, tile, tile.position, tile.tileRotation)){
-            throw IllegalArgumentException("Position is invalid")
+            throw IllegalArgumentException("Rotate the tile or pick a different position!")
         }
         game.placeTile(tile, tile.position)
 
@@ -573,7 +573,7 @@ class GameManager(
 
         // Überprüfen, ob der Spieler noch Meeples hat
         if (currentPlayer.remainingMeeple <= 0) {
-            throw IllegalStateException("No Meeples remaining for placement!") // Rückmeldung an den Spieler auf Englisch
+            throw IllegalStateException("You don't have any meeples left to place!") // Displayed to player in toast
         }
 
         // Validierung der Position
@@ -585,14 +585,9 @@ class GameManager(
 
         // Prüfung auf bereits vorhandene Meeples im verbundenen Bereich
         val connectedTiles = getConnectedFeatureTiles(game, tile, position)
-        if (connectedTiles.isEmpty()) {
-            println("No connected feature found for Meeple at position: $position")
-        }
-        val featureType = if (position == MeeplePosition.C) TerrainType.MONASTERY
-        else tile.getTerrainType(position.name)
-            ?: throw IllegalStateException("Invalid feature type")
-        if (isMeeplePresentOnFeature(game, connectedTiles, featureType)) {
-            throw IllegalStateException("Another Meeple is already present on this feature!")
+
+        if (isMeeplePresentOnFeature(game, connectedTiles)) {
+            throw IllegalStateException("Another meeple is already placed on this feature!") // Displayed to player in toast
         }
 
         // Meeple-Platzierung
@@ -600,10 +595,10 @@ class GameManager(
         game.meeplesOnBoard.add(meeple)
 
         // Meeple-Anzahl aktualisieren
-        currentPlayer.remainingMeeple -= 1
+        currentPlayer.remainingMeeple--
 
         // Nächster Spielstatus
-        game.status = GamePhase.SCORING //Mike: Ist das richtig oder müssen wir auf SCORING? --> Scoring lt. Bespr. mit Jakob/Felix 27.04.2025
+        game.status = GamePhase.SCORING
 
         return game
     }
@@ -617,39 +612,46 @@ class GameManager(
         }
     }
 
-    fun isMeeplePresentOnFeature(game: GameState, featureTiles: List<Position>, featureType: TerrainType): Boolean {
+    fun isMeeplePresentOnFeature(game: GameState, connectedTiles: List<Position>): Boolean {
         return game.meeplesOnBoard.any { meeple ->
-            val meepleTilePosition = getTilePosition(game, meeple.tileId)
-            val direction = meeple.position?.name ?: throw IllegalStateException("Meeple position is null")
-            meepleTilePosition in featureTiles &&
-                    game.board[meepleTilePosition]?.getTerrainType(direction) == featureType
+            val meeplePos = getTilePosition(game, meeple.tileId) ?: return@any false
+            meeplePos in connectedTiles
         }
     }
 
-    fun getConnectedFeatureTiles(game: GameState, startTile: Tile, startPosition: MeeplePosition): List<Position> {
-        val visited = mutableSetOf<Edge>()
-        val positions = mutableSetOf<Position>()
+    fun getConnectedFeatureTiles(game: GameState, startTile: Tile, startPos: MeeplePosition): List<Position> {
+        val featureType = startTile.getTerrainAtOrNull(startPos)
+            ?: return emptyList()
+
+        val visitedEdges = mutableSetOf<Edge>()
+        val featureTiles = mutableSetOf<Position>()
         val edgeQueue = ArrayDeque<Edge>()
 
-        val startPos = startTile.position!!
-        edgeQueue += Edge(startPos, startPosition.name)
+        val originPos = startTile.position!!
+        edgeQueue += Edge(originPos, startPos.name)
 
-        val featureType = startTile.getTerrainAtOrNull(startPosition)
-            ?: return emptyList()
+        if (startPos != MeeplePosition.C) {
+            edgeQueue += Edge(originPos, startPos.name)
+        } else {
+            startTile.getRotatedTerrains()
+                .filterValues { it == featureType }
+                .keys
+                .forEach { dir -> edgeQueue += Edge(originPos, dir) }
+        }
 
         while(edgeQueue.isNotEmpty()){
             val (pos, dir) = edgeQueue.removeFirst()
-            if (!visited.add(Edge(pos, dir))) continue
-            positions += pos
+            if (!visitedEdges.add(Edge(pos, dir))) continue
+            featureTiles += pos
 
             val tile = game.board[pos] ?: continue
             val terrains = tile.getRotatedTerrains()
-            val center   = tile.terrainCenter
+            val center = tile.terrainCenter
 
             if (terrains[dir] == featureType) {
                 val neighborPos = neighbor(pos, dir)
-                val neighborBoard = game.board[neighborPos]
-                if (neighborBoard?.getRotatedTerrains()?.get(opposite(dir)) == featureType) {
+                val neighborTile = game.board[neighborPos]
+                if (neighborTile?.getRotatedTerrains()?.get(opposite(dir)) == featureType) {
                     edgeQueue += Edge(neighborPos, opposite(dir))
                 }
             }
@@ -660,7 +662,7 @@ class GameManager(
                     .forEach { edgeQueue += Edge(pos, it) }
             }
         }
-        return positions.toList()
+        return featureTiles.toList()
     }
 
     private data class Edge(val pos: Position, val dir: String)

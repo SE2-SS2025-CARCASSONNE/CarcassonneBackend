@@ -135,14 +135,14 @@ class GameWebSocketController(
                         msg.player,
                         "/queue/private",
                         mapOf("type" to "error",
-                            "message" to "You have already drawn a tile"))
+                            "message" to "You have already drawn a tile!"))
                     return
                 }
 
                 println(">>> [Backend] Handling DRAW_TILE for ${msg.player} in game ${msg.gameId}")
                 val drawnTile  = gameManager.drawTileForPlayer(msg.gameId) ?: run {
                     messagingTemplate.convertAndSend("/topic/game/${msg.gameId}",
-                        mapOf("type" to "error", "message" to "No more playable tiles"))
+                        mapOf("type" to "error", "message" to "No more playable tiles!"))
                     return
                 }
 
@@ -232,8 +232,9 @@ class GameWebSocketController(
                         }
                     }
                 } catch (e: Exception) {
-                    messagingTemplate.convertAndSend(
-                        "/topic/game/${msg.gameId}",
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player,
+                        "/queue/private",
                         mapOf("type" to "error", "message" to e.message)
                     )
                 }
@@ -266,7 +267,7 @@ class GameWebSocketController(
                 val meeplePos = meeple.position ?: run {
                     messagingTemplate.convertAndSendToUser(
                         msg.player, "/queue/private",
-                        mapOf("type" to "error", "message" to "Invalid meeple position")
+                        mapOf("type" to "error", "message" to "You can't place meeples on this position!")
                     )
                     return
                 }
@@ -322,7 +323,7 @@ class GameWebSocketController(
                     // 7) Ungültige Platzierung (anderer Grund)
                     messagingTemplate.convertAndSendToUser(
                         msg.player, "/queue/private",
-                        mapOf("type" to "error", "message" to "Invalid meeple placement or not your turn")
+                        mapOf("type" to "error", "message" to "Unknown game or placement error!")
                     )
                 }
             }
@@ -424,7 +425,7 @@ class GameWebSocketController(
             messagingTemplate.convertAndSendToUser(
                 msg.player,
                 "/queue/private",
-                mapOf("type" to "error", "message" to "Not your turn")
+                mapOf("type" to "error", "message" to "It's not your turn!")
             )
             return null
         }
