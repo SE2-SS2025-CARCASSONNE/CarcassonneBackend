@@ -4,6 +4,7 @@ import com.carcassonne.backend.model.GameMessage
 import com.carcassonne.backend.model.GameState
 import com.carcassonne.backend.model.Player
 import com.carcassonne.backend.repository.GameRepository
+import com.carcassonne.backend.repository.UserRepository
 import com.carcassonne.backend.service.GameManager
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
@@ -14,8 +15,14 @@ class GameWebSocketControllerTest {
     private val mockGameManager = mock<GameManager>()
     private val mockMessagingTemplate = mock<SimpMessagingTemplate>()
     private val mockGameRepository = mock<GameRepository>()
+    private val mockUserRepository = mock<UserRepository>()
 
-    private val controller = GameWebSocketController(mockGameManager, mockMessagingTemplate, mockGameRepository)
+    private val controller = GameWebSocketController(
+        mockGameManager,
+        mockMessagingTemplate,
+        mockGameRepository,
+        mockUserRepository
+    )
 
     @Test
     fun `handle join_game sends player_joined message to all and privately`() {
