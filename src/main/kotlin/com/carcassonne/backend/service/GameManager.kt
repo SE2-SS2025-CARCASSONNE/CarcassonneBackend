@@ -176,13 +176,14 @@ class GameManager(
 
                  if (isCompleted) {
                      // 5. Alle Meeples auf dem Feature sammeln
-                     val involvedMeeples = game.meeplesOnBoard.filter { meeple ->
-                         val position = getTilePosition(game, meeple.tileId) ?: return@filter false
-                         if (position !in featureTiles) return@filter false
+                     val startEdge = Edge(placedTile.position!!, direction.shortCode)
 
-                         meeple.position?.let { dir ->
-                             game.board[position]?.getTerrainAtOrNull(dir) == terrainType
-                         } ?: false
+                     val involvedMeeples = game.meeplesOnBoard.filter { meeple ->
+                         val pos = getTilePosition(game, meeple.tileId) ?: return@filter false
+                         val dir = meeple.position?.name ?: return@filter false
+
+                         if (game.board[pos]?.getTerrainAtOrNull(meeple.position!!) != terrainType) return@filter false
+                         edgesConnected(game.board, startEdge, Edge(pos, dir), terrainType)
                      }.toMutableList()
 
                      val featureTypeString = when (terrainType) {
@@ -238,8 +239,6 @@ class GameManager(
         "CITY" -> {
             var points = basePoints * 2
             // Add shield bonus of 2 points for applicable city tiles
-            val tilesWithShield = getTilesWithShield(involvedMeeples, game)
-            points += tilesWithShield.size * 2
             points
         }
         "ROAD" -> basePoints
@@ -541,10 +540,8 @@ class GameManager(
         }
 
         // Prüfung auf bereits vorhandene Meeples im verbundenen Bereich
-        val connectedTiles = getConnectedFeatureTiles(game, tile, position)
-
-        if (isMeeplePresentOnFeature(game, connectedTiles)) {
-            throw IllegalStateException("Road or city is already occupied!") // Displayed to player in toast
+        if (isMeeplePresentOnFeature(game, tile, position)) {
+            throw IllegalStateException("Road or city is already occupied!")
         }
 
         // Meeple-Platzierung
@@ -569,12 +566,55 @@ class GameManager(
         }
     }
 
-    fun isMeeplePresentOnFeature(game: GameState, connectedTiles: List<Position>): Boolean {
+    private fun isMeeplePresentOnFeature(game: GameState, startTile: Tile, startPos: MeeplePosition): Boolean {
+        val featureType = startTile.getTerrainAtOrNull(startPos) ?: return false
+        val visited = mutableSetOf<Edge>()
+        val edgeQueue = ArrayDeque<Edge>()
+        val origin = requireNotNull(startTile.position)
+
+        edgeQueue += Edge(origin, startPos.name)
+        if (startPos == MeeplePosition.C) {
+            startTile.getRotatedTerrains()
+                .filterValues { it == featureType }
+                .keys
+                .forEach { dir -> edgeQueue += Edge(origin, dir) }
+        }
+
+        while (edgeQueue.isNotEmpty()) {
+            val edge = edgeQueue.removeFirst()
+            if (!visited.add(edge)) continue
+
+            val (pos, dir) = edge
+            val tile = game.board[pos] ?: continue
+            val terrains = tile.getRotatedTerrains()
+            val center = tile.terrainCenter
+
+            if (center == featureType) {
+                visited.add(Edge(pos, "C"))
+            }
+
+            if (terrains[dir] == featureType) {
+                val neighborPos = neighbor(pos, dir)
+                val neighborTerr = game.board[neighborPos]?.getRotatedTerrains()
+                if (neighborTerr?.get(opposite(dir)) == featureType) {
+                    edgeQueue += Edge(neighborPos, opposite(dir))
+                }
+            }
+
+            if (center == featureType) {
+                listOf("N","E","S","W")
+                    .filter { it != dir && terrains[it] == featureType }
+                    .forEach { edgeQueue += Edge(pos, it) }
+            }
+        }
+
         return game.meeplesOnBoard.any { meeple ->
-            val meeplePos = getTilePosition(game, meeple.tileId) ?: return@any false
-            meeplePos in connectedTiles
+            val pos = getTilePosition(game, meeple.tileId) ?: return@any false
+            val dir = meeple.position?.name ?: return@any false
+            Edge(pos, dir) in visited
         }
     }
+
 
     fun getConnectedFeatureTiles(game: GameState, startTile: Tile, startPos: MeeplePosition): List<Position> {
         val featureType = startTile.getTerrainAtOrNull(startPos)
@@ -636,6 +676,39 @@ class GameManager(
         "E" -> Position(p.x + 1, p.y)
         else -> Position(p.x - 1, p.y) // W
     }
+
+    private fun edgesConnected(board: Map<Position, Tile>, start: Edge, target: Edge, type: TerrainType?): Boolean {
+        val seen = mutableSetOf<Edge>()
+        val edgeQueue = ArrayDeque<Edge>()
+        edgeQueue += start
+
+        while (edgeQueue.isNotEmpty()) {
+            val edge = edgeQueue.removeFirst()
+            if (!seen.add(edge)) continue
+            if (edge == target) return true
+
+            val (pos, dir) = edge
+            val tile = board[pos] ?: continue
+            val terrain = tile.getRotatedTerrains()
+            val centerTerr = tile.terrainCenter
+
+            if (terrain[dir] == type) {
+                val neighborPos = neighbor(pos, dir)
+                val neighborTerr = board[neighborPos]?.getRotatedTerrains()
+                if (neighborTerr?.get(opposite(dir)) == type) {
+                    edgeQueue += Edge(neighborPos, opposite(dir))
+                }
+            }
+
+            if (centerTerr == type) {
+                listOf("N","E","S","W")
+                    .filter { it != dir && terrain[it] == type }
+                    .forEach { edgeQueue += Edge(pos, it) }
+            }
+        }
+        return false
+    }
+
 
     fun getUniqueTiles(): List<Tile> {
         // Save all 24 unique base tiles in a list for tile deck generation
@@ -889,22 +962,5 @@ class GameManager(
             )
         )
         return uniqueTiles
-    }
-
-    fun getTilesWithShield(involvedMeeples: List<Meeple>, gameState: GameState): List<Tile> {
-        val tilesWithShield = mutableListOf<Tile>()
-
-        // Add all tiles with shield to the list (no need to manually check for city)
-        for (tile in gameState.tileDeck) {
-            if (tile.hasShield) {
-                for (meeple in involvedMeeples) {
-                    if (meeple.tileId == tile.id) {
-                        tilesWithShield.add(tile)
-                        break // Exit inner loop upon match
-                    }
-                }
-            }
-        }
-        return tilesWithShield
     }
 }
