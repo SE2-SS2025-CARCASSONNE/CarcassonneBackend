@@ -6,6 +6,7 @@ import com.carcassonne.backend.model.GameState
 import com.carcassonne.backend.model.Position
 import com.carcassonne.backend.model.Tile
 import com.carcassonne.backend.repository.GameRepository
+import com.carcassonne.backend.repository.UserRepository
 import com.carcassonne.backend.service.GameManager
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.handler.annotation.Payload
@@ -16,7 +17,8 @@ import org.springframework.stereotype.Controller
 class GameWebSocketController(
     private val gameManager: GameManager,
     private val messagingTemplate: SimpMessagingTemplate,
-    private val gameRepository: GameRepository
+    private val gameRepository: GameRepository,
+    private val userRepository: UserRepository
 ) {
 
     @MessageMapping("/game/send") // from client to /app/game/send
@@ -220,6 +222,22 @@ class GameWebSocketController(
                             println(">>> Game ended: no tiles left after place_tile")
                             g.finishGame()
                             val winnerId = gameManager.endGame(msg.gameId!!)
+
+                            val dbGame = gameRepository.findByGameCode(msg.gameId)
+                            if (dbGame != null) {
+                                dbGame.status = GamePhase.FINISHED.name
+                                dbGame.winner = winnerId
+                                gameRepository.save(dbGame)
+                            }
+
+                            g.players.forEach { player ->
+                                val user = userRepository.findUserByUsername(player.id)
+                                if (user != null && player.score > (user.highScore ?: 0)) {
+                                    user.highScore = player.score
+                                    userRepository.save(user)
+                                }
+                            }
+
                             val payload = mapOf(
                                 "type" to "game_over",
                                 "winner" to winnerId,
@@ -326,6 +344,23 @@ class GameWebSocketController(
                     println(">>> Game ended: no tiles left after skip_meeple")
                     game.finishGame()
                     val winnerId = gameManager.endGame(msg.gameId!!)
+
+                    val dbGame = gameRepository.findByGameCode(msg.gameId)
+                    if (dbGame != null) {
+                        dbGame.status = GamePhase.FINISHED.name
+                        dbGame.winner = winnerId
+                        gameRepository.save(dbGame)
+                    }
+
+                    // Update high score for ALL players
+                    game.players.forEach { player ->
+                        val user = userRepository.findUserByUsername(player.id)
+                        if (user != null && player.score > (user.highScore ?: 0)) {
+                            user.highScore = player.score
+                            userRepository.save(user)
+                        }
+                    }
+
                     val payload = mapOf(
                         "type" to "game_over",
                         "winner" to winnerId,
