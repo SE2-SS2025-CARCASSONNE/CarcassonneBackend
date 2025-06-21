@@ -8,17 +8,6 @@ data class Meeple(
     var position: MeeplePosition? = null // Position des Meeples auf der Kachel
 )
 
-enum class MeepleType {
-    KNIGHT,   // Für Städte
-    THIEF,    // Für Straßen
-    MONK     // Für Klöster, zusätzlich wären noch möglich: FARMER für Felder; ABBOT für Gärten (Erweiterung)
-}
-
-/*enum class MeeplePosition {
-    NORTH, EAST, SOUTH, WEST, CENTER // Bereiche auf dem Tile
-}
-*/
-
 enum class MeeplePosition(val shortCode: String) {
     N("N"), // North
     E("E"), // East

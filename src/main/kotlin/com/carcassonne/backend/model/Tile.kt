@@ -5,6 +5,7 @@ data class Tile(
     val terrainEast: TerrainType,
     val terrainSouth: TerrainType,
     val terrainWest: TerrainType,
+    val terrainCenter: TerrainType,
     val tileRotation: TileRotation,
     val position: Position? = null,
     val hasMonastery: Boolean = false,
@@ -18,10 +19,6 @@ fun Tile.getAllTerrains(): Set<TerrainType> = setOf(
 
 fun Tile.isRoad(): Boolean = getAllTerrains().contains(TerrainType.ROAD)
 fun Tile.isCity(): Boolean = getAllTerrains().contains(TerrainType.CITY)
-
-fun Tile.isMonastery(): Boolean {
-    return hasMonastery
-}
 
 fun Tile.getRotatedTerrains(): Map<String, TerrainType> {
     return when (tileRotation) {
@@ -71,26 +68,9 @@ fun Tile.getTerrainAtOrNull(pos: MeeplePosition): TerrainType? {
         MeeplePosition.E -> terrains["E"]
         MeeplePosition.S -> terrains["S"]
         MeeplePosition.W -> terrains["W"]
-        MeeplePosition.C -> when {
-            // Monastery sitzt immer in der Mitte
-            hasMonastery -> TerrainType.MONASTERY
-
-            // gerade durchgehende Straße West↔Ost
-            terrains["W"] == TerrainType.ROAD && terrains["E"] == TerrainType.ROAD -> TerrainType.ROAD
-            // gerade durchgehende Straße Nord↔Süd
-            terrains["N"] == TerrainType.ROAD && terrains["S"] == TerrainType.ROAD -> TerrainType.ROAD
-
-            // zweigeteilte Stadtstücke, z.B. N↔E, E↔S, S↔W, W↔N
-            terrains["N"] == TerrainType.CITY && terrains["E"] == TerrainType.CITY -> TerrainType.CITY
-            terrains["E"] == TerrainType.CITY && terrains["S"] == TerrainType.CITY -> TerrainType.CITY
-            terrains["S"] == TerrainType.CITY && terrains["W"] == TerrainType.CITY -> TerrainType.CITY
-            terrains["W"] == TerrainType.CITY && terrains["N"] == TerrainType.CITY -> TerrainType.CITY
-
-            else -> null
-        }
+        MeeplePosition.C -> terrainCenter
     }
 }
-
 
 enum class TerrainType {
     ROAD,
