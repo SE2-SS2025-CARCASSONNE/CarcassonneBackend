@@ -262,7 +262,12 @@ class GameWebSocketController(
                 // Correct accusation -> punishment for cheater
                 if (game.cheatedThisTurn) {
                     val culprit = game.getCurrentPlayer()
-                    game.players.first { it.id == culprit }.score -= 2
+                    if (game.players.first { it.id == culprit }.score > 1){
+                        game.players.first { it.id == culprit }.score -= 2
+                    } else if (game.players.first { it.id == culprit }.score > 0) {
+                        game.players.first { it.id == culprit }.score -= 1
+                    }
+
                     game.cheaterExposed = true
 
                     val payload = mapOf(
@@ -276,7 +281,9 @@ class GameWebSocketController(
 
                 } else {
                     // False accusation -> punishment for accuser
-                    game.players.first { it.id == msg.player }.score -= 1
+                    if (game.players.first { it.id == msg.player }.score > 0) {
+                        game.players.first { it.id == msg.player }.score -= 1
+                    }
 
                     val payload = mapOf(
                         "type" to "expose_fail",
