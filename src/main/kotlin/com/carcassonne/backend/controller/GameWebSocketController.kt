@@ -149,6 +149,8 @@ class GameWebSocketController(
                 }
 
                 game.tileDrawnThisTurn = true
+                game.cheatedThisTurn = false
+                game.currentDrawnTile = drawnTile
 
                 val validPlacementsJson = gameManager
                     .getAllValidPositions(msg.gameId, drawnTile)
@@ -177,6 +179,63 @@ class GameWebSocketController(
                         "type" to "deck_update",
                         "deckRemaining" to game.tileDeck.size
                     )
+                )
+            }
+
+            "CHEAT_REDRAW" -> {
+                val game = authorizeTurn(msg) ?: return
+
+                if (game.status != GamePhase.TILE_PLACEMENT || !game.tileDrawnThisTurn) {
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player, "/queue/private",
+                        mapOf("type" to "error", "message" to "Stop shaking your phone...")
+                    )
+                    return
+                }
+
+                if (game.cheatedThisTurn) {
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player, "/queue/private",
+                        mapOf("type" to "error", "message" to "You already cheated this turn...")
+                    )
+                    return
+                }
+
+                game.currentDrawnTile?.let { game.discardedTiles += it }
+
+                val newTile = gameManager.drawTileForPlayer(msg.gameId) ?: run {
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player, "/queue/private",
+                        mapOf("type" to "error", "message" to "There are no tiles left...")
+                    )
+                    return
+                }
+
+                game.currentDrawnTile = newTile
+                game.cheatedThisTurn  = true
+
+                val validPlacements = gameManager
+                    .getAllValidPositions(msg.gameId, newTile)
+                    .map { (pos, rot, _) ->
+                        mapOf(
+                            "position" to mapOf("x" to pos.x, "y" to pos.y),
+                            "rotation" to rot.name
+                        )
+                    }
+
+                messagingTemplate.convertAndSendToUser(
+                    msg.player,
+                    "/queue/private",
+                    mapOf(
+                        "type" to "CHEAT_TILE_DRAWN",
+                        "tile" to newTile,
+                        "validPlacements" to validPlacements
+                    )
+                )
+
+                messagingTemplate.convertAndSend(
+                    "/topic/game/${msg.gameId}",
+                    mapOf("type" to "deck_update", "deckRemaining" to game.tileDeck.size)
                 )
             }
 
@@ -427,6 +486,8 @@ class GameWebSocketController(
         game.status = GamePhase.TILE_PLACEMENT
         game.nextPlayer()
         game.tileDrawnThisTurn = false
+        game.cheatedThisTurn = false
+        game.currentDrawnTile = null
 
         // Broadcast new scores, meeple counts and next player
         val scorePayload = mapOf(

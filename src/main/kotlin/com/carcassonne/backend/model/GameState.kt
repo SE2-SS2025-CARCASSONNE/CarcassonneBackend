@@ -9,7 +9,9 @@ data class GameState(
     var discardedTiles: MutableList<Tile> = mutableListOf(),
     var tileDeck: MutableList<Tile> = mutableListOf(), // The tile deck can be managed here.
     val meeplesOnBoard: MutableList<Meeple> = mutableListOf(), // Liste der platzierten Meeples
-    var tileDrawnThisTurn: Boolean = false
+    var tileDrawnThisTurn: Boolean = false,
+    var cheatedThisTurn: Boolean = false,
+    var currentDrawnTile: Tile?   = null
 ) {
     // Switch to the next player
     fun nextPlayer(): String {
