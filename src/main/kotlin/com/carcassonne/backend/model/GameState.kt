@@ -9,7 +9,11 @@ data class GameState(
     var discardedTiles: MutableList<Tile> = mutableListOf(),
     var tileDeck: MutableList<Tile> = mutableListOf(), // The tile deck can be managed here.
     val meeplesOnBoard: MutableList<Meeple> = mutableListOf(), // Liste der platzierten Meeples
-    var tileDrawnThisTurn: Boolean = false
+    var tileDrawnThisTurn: Boolean = false,
+    var cheatedThisTurn: Boolean = false,
+    var cheaterExposed: Boolean = false,
+    var currentDrawnTile: Tile? = null
+
 ) {
     // Switch to the next player
     fun nextPlayer(): String {
@@ -63,20 +67,9 @@ data class GameState(
         status = GamePhase.MEEPLE_PLACEMENT // comment-out this line for manually testing place tile (DONT PUSH WITH OUT-COMMENTED LINE OR TESTS WILL BREAK)
     }
 
-    // Shuffle and add tiles to the deck (for a random start)
-    fun shuffleTiles() {
-        tileDeck.shuffle()
-    }
-
     // Draw a tile from the deck
     fun drawTile(): Tile? {
         return if (tileDeck.isNotEmpty()) tileDeck.removeAt(0) else null
-    }
-
-    // Calculate score for a player (example)
-    fun calculateScore(player: String): Int {
-        // Implement scoring logic here !!!
-        return 0
     }
 }
 

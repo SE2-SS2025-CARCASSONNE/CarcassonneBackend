@@ -49,17 +49,6 @@ fun Tile.getRotatedTerrains(): Map<String, TerrainType> {
     }
 }
 
-fun Tile.getTerrainType(direction: String): TerrainType? {
-    // Nutze die bereits bestehende Rotationslogik
-    val rotatedTerrains = this.getRotatedTerrains()
-
-    if (!rotatedTerrains.containsKey(direction)) {
-        return null
-    }
-
-    return rotatedTerrains[direction] // Gibt den TerrainType für die angegebene Richtung zurück
-}
-
 fun Tile.getTerrainAtOrNull(pos: MeeplePosition): TerrainType? {
     // Zuerst die Rotationslogik für N, E, S, W wiederverwenden
     val terrains = getRotatedTerrains()
