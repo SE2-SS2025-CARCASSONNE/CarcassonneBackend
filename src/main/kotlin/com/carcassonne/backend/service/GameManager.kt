@@ -685,36 +685,35 @@ class GameManager(
     }
 
 
-    private fun edgesConnected(board: Map<Position, Tile>, start: Edge, target: Edge, type: TerrainType?): Boolean {
+    private fun edgesConnected(board: Map<Position, Tile>, start: Edge, target: Edge, type: TerrainType) : Boolean {
         val visited = mutableSetOf<Edge>()
         val edgeQueue = ArrayDeque<Edge>()
         edgeQueue += start
 
         while (edgeQueue.isNotEmpty()) {
-            val edge = edgeQueue.removeFirst()
-            if (!visited.add(edge)) continue
-            if (edge == target) return true
+            val (p, d) = edgeQueue.removeFirst()
+            if (!visited.add(Edge(p, d))) continue
+            if (p == target.pos && d == target.dir) return true
 
-            val (pos, dir) = edge
-            val tile = board[pos] ?: continue
-            val terrain = tile.getRotatedTerrains()
-            val centerOk = tile.terrainCenter == type
+            val tile = board[p] ?: continue
+            val terrains = tile.getRotatedTerrains()
+            val centreIsFeature = tile.terrainCenter == type
 
-            if (terrain[dir] == type) {
-                val neighborPos = neighbor(pos, dir)
+            if (terrains[d] == type) {
+                val neighborPos = neighbor(p, d)
                 val neighborTerr = board[neighborPos]?.getRotatedTerrains()
-                if (neighborTerr?.get(opposite(dir)) == type) {
-                    edgeQueue += Edge(neighborPos, opposite(dir))
+                if (neighborTerr?.get(opposite(d)) == type) {
+                    edgeQueue += Edge(neighborPos, opposite(d))
                 }
             }
 
-            if (centerOk && dir != "C") {
-                edgeQueue += Edge(pos, "C")
-            }
-            if (centerOk && dir == "C") {
-                listOf("N","E","S","W")
-                    .filter { it != dir && terrain[it] == type }
-                    .forEach { edgeQueue += Edge(pos, it) }
+            if (centreIsFeature) {
+                if (d != "C") edgeQueue += Edge(p, "C")
+                else {
+                    listOf("N","E","S","W")
+                        .filter { terrains[it] == type }
+                        .forEach { edgeQueue += Edge(p, it) }
+                }
             }
         }
         return false
