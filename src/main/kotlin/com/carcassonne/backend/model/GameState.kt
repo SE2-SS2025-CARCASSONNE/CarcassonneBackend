@@ -11,7 +11,9 @@ data class GameState(
     val meeplesOnBoard: MutableList<Meeple> = mutableListOf(), // Liste der platzierten Meeples
     var tileDrawnThisTurn: Boolean = false,
     var cheatedThisTurn: Boolean = false,
-    var currentDrawnTile: Tile?   = null
+    var cheaterExposed: Boolean = false,
+    var currentDrawnTile: Tile? = null
+
 ) {
     // Switch to the next player
     fun nextPlayer(): String {

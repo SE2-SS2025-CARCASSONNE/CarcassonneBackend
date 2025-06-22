@@ -212,7 +212,8 @@ class GameWebSocketController(
                 }
 
                 game.currentDrawnTile = newTile
-                game.cheatedThisTurn  = true
+                game.cheatedThisTurn = true
+                game.cheaterExposed  = false
 
                 val validPlacements = gameManager
                     .getAllValidPositions(msg.gameId, newTile)
@@ -237,6 +238,54 @@ class GameWebSocketController(
                     "/topic/game/${msg.gameId}",
                     mapOf("type" to "deck_update", "deckRemaining" to game.tileDeck.size)
                 )
+            }
+
+            "EXPOSE_CHEATER" -> {
+                val game = gameManager.getGame(msg.gameId)
+
+                if (msg.player == game.getCurrentPlayer()) {
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player, "/queue/private",
+                        mapOf("type" to "error", "message" to "You can’t expose yourself!")
+                    )
+                    return
+                }
+
+                if (game.cheaterExposed) {
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player, "/queue/private",
+                        mapOf("type" to "error", "message" to "Cheater was already exposed!")
+                    )
+                    return
+                }
+
+                // Correct accusation -> punishment for cheater
+                if (game.cheatedThisTurn) {
+                    val culprit = game.getCurrentPlayer()
+                    game.players.first { it.id == culprit }.score -= 2
+                    game.cheaterExposed = true
+
+                    val payload = mapOf(
+                        "type" to "expose_success",
+                        "culprit" to culprit,
+                        "accuser" to msg.player,
+                        "scores" to game.players.map { p -> mapOf("player" to p.id, "score" to p.score) },
+                        "disableExpose" to true
+                    )
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
+
+                } else {
+                    // False accusation -> punishment for accuser
+                    game.players.first { it.id == msg.player }.score -= 1
+
+                    val payload = mapOf(
+                        "type" to "expose_fail",
+                        "player" to msg.player,
+                        "scores" to game.players.map { p -> mapOf("player" to p.id, "score" to p.score) },
+                        "disableExpose" to false
+                    )
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
+                }
             }
 
             "place_tile" -> {
@@ -487,6 +536,7 @@ class GameWebSocketController(
         game.nextPlayer()
         game.tileDrawnThisTurn = false
         game.cheatedThisTurn = false
+        game.cheaterExposed  = false
         game.currentDrawnTile = null
 
         // Broadcast new scores, meeple counts and next player
