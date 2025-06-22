@@ -27,7 +27,11 @@ interface GameRepository : JpaRepository<Game, Long> {
         @Param("status") status: String
     )
 
-
-    // Repository method should use String
     fun findByGameCode(gameCode: String): Game?
+
+    @Query("SELECT COUNT(g) FROM Game g WHERE g.winner = :username")
+    fun countWinsByUsername(@Param("username") username: String): Int
+
+    @Query("SELECT COUNT(g) FROM Game g WHERE g.winner = :username OR g.status = 'FINISHED'")
+    fun countFinishedGamesByUsername(@Param("username") username: String): Int
 }

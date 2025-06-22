@@ -10,5 +10,5 @@ data class User(
     val id: Long = 0, // Unique user ID (primary key)
     val username: String = "", // Display name for UI and identification
     val password: String = "",  // Hashed password for user login
-    val highScore: Int? = 0 // New attribute to track the user’s highest score
+    var highScore: Int? = 0 // New attribute to track the user’s highest score
 )

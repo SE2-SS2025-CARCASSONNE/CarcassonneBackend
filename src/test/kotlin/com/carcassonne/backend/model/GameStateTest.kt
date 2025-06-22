@@ -49,6 +49,7 @@ class GameStateTest {
             terrainEast = TerrainType.FIELD,
             terrainSouth = TerrainType.CITY,
             terrainWest = TerrainType.ROAD,
+            terrainCenter = TerrainType.FIELD,
             tileRotation = TileRotation.NORTH
         )
         val position = Position(0, -1)
@@ -65,6 +66,7 @@ class GameStateTest {
             terrainEast = TerrainType.FIELD,
             terrainSouth = TerrainType.CITY,
             terrainWest = TerrainType.ROAD,
+            terrainCenter = TerrainType.FIELD,
             tileRotation = TileRotation.NORTH
         )
         gameState.tileDeck.add(tile)

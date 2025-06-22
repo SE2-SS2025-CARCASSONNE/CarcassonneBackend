@@ -2,6 +2,7 @@ package com.carcassonne.backend.controller
 
 import com.carcassonne.backend.model.*
 import com.carcassonne.backend.repository.GameRepository
+import com.carcassonne.backend.repository.UserRepository
 import com.carcassonne.backend.service.GameManager
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
@@ -12,8 +13,14 @@ class GameWebSocketEndGameTest {
     private val mockGameManager = mock<GameManager>()
     private val mockMessagingTemplate = mock<SimpMessagingTemplate>()
     private val mockGameRepository = mock<GameRepository>()
+    private val mockUserRepository = mock<UserRepository>()
 
-    private val controller = GameWebSocketController(mockGameManager, mockMessagingTemplate, mockGameRepository)
+    private val controller = GameWebSocketController(
+        mockGameManager,
+        mockMessagingTemplate,
+        mockGameRepository,
+        mockUserRepository
+    )
 
     @Test
     fun `handle end_game sends game_over message with winner`() {
