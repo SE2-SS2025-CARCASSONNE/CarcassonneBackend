@@ -67,20 +67,9 @@ data class GameState(
         status = GamePhase.MEEPLE_PLACEMENT // comment-out this line for manually testing place tile (DONT PUSH WITH OUT-COMMENTED LINE OR TESTS WILL BREAK)
     }
 
-    // Shuffle and add tiles to the deck (for a random start)
-    fun shuffleTiles() {
-        tileDeck.shuffle()
-    }
-
     // Draw a tile from the deck
     fun drawTile(): Tile? {
         return if (tileDeck.isNotEmpty()) tileDeck.removeAt(0) else null
-    }
-
-    // Calculate score for a player (example)
-    fun calculateScore(player: String): Int {
-        // Implement scoring logic here !!!
-        return 0
     }
 }
 

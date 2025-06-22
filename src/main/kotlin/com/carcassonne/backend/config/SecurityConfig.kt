@@ -15,7 +15,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 class SecurityConfig(
     private val jwtFilter: JwtFilter //Inject dependency via constructor
 ) {
-
     @Bean
     //Tells Spring how to secure the API endpoints
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
