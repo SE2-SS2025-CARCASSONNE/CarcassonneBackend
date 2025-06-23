@@ -382,7 +382,7 @@ class GameWebSocketController(
                 if (lastTile != null && msg.meeple?.tileId != lastTile.id) {
                     messagingTemplate.convertAndSendToUser(
                         msg.player, "/queue/private",
-                        mapOf("type" to "error", "message" to "You can only place it on the current tile!")
+                        mapOf("type" to "error", "message" to "Place it on the current tile!")
                     )
                     return
                 }
@@ -532,9 +532,10 @@ class GameWebSocketController(
     private fun finalizeTurn(game: GameState, lastTile: Tile) {
         // Recalculate scores and return meeples back to players
         game.status = GamePhase.SCORING
-        val before = game.meeplesOnBoard.toList()
 
-        gameManager.calculateScore(game.gameId, lastTile)
+        val before = game.meeplesOnBoard.toList()
+        val scoringEvents = gameManager.calculateScore(game.gameId, lastTile)
+
         val after = game.meeplesOnBoard.toList()
         val removedMeeples = before.filter { meeple -> meeple !in after }
 
@@ -560,6 +561,16 @@ class GameWebSocketController(
             "gamePhase"  to game.status.name
         )
         messagingTemplate.convertAndSend("/topic/game/${game.gameId}", scorePayload)
+
+        scoringEvents.forEach { event ->
+            val toastPayload = mapOf(
+                "type"    to "feature_scored",
+                "player"  to event.playerId,
+                "points"  to event.points,
+                "feature" to event.feature
+            )
+            messagingTemplate.convertAndSend("/topic/game/${game.gameId}", toastPayload)
+        }
 
         if (removedMeeples.isNotEmpty()) {
             val removedIds = removedMeeples.map { it.id }
