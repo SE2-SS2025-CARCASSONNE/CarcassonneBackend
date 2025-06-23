@@ -119,7 +119,7 @@ class GameManager(
         println(" Checking tile ${tile.id} for ${potentialSpots.size} possible positions...")
 
         for (spot in potentialSpots) {
-            for (rotation in TileRotation.values()) {
+            for (rotation in TileRotation.entries) {
                 val rotatedTile = tile.copy(tileRotation = rotation, position = spot)
                 val valid = isValidPosition(game, rotatedTile, spot)
                 println(" - Trying ${tile.id} at $spot with $rotation: $valid")
@@ -318,7 +318,7 @@ class GameManager(
             return ScoringEvent(
                 playerId = "Players",
                 points   = 0,
-                feature  = "${featureType} tie"
+                feature  = "$featureType tie"
             )
         }
         return null
@@ -400,8 +400,6 @@ class GameManager(
                 println("City is completed at $pos")
             }
         }
-
-        //game.nextPlayer() move to endTurn logic
         game.status = GamePhase.MEEPLE_PLACEMENT
         return game
     }
@@ -424,7 +422,7 @@ class GameManager(
         }.filter { it !in game.board.keys }.toSet()
 
         for (spot in potentialSpots) {
-            for (rotation in TileRotation.values()) {
+            for (rotation in TileRotation.entries) {
                 val rotatedTile = tile.copy(tileRotation = rotation, position = spot)
                 val isValid = isValidPosition(game, rotatedTile, spot)
                 if (isValid) {
