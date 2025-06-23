@@ -37,10 +37,10 @@ data class GameState(
         for(player in players)
         {
             if(player.id == playerID)
-                return player;
+                return player
 
         }
-        return null;
+        return null
     }
 
     // Finish the game (change status to FINISHED)
