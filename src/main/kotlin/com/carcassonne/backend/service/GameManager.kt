@@ -4,6 +4,8 @@ import com.carcassonne.backend.model.*
 import org.springframework.stereotype.Component
 import kotlin.random.Random
 
+data class ScoringEvent(val playerId: String, val points: Int, val feature: String)
+
 @Component
 class GameManager(
 ) {
@@ -117,7 +119,7 @@ class GameManager(
         println(" Checking tile ${tile.id} for ${potentialSpots.size} possible positions...")
 
         for (spot in potentialSpots) {
-            for (rotation in TileRotation.values()) {
+            for (rotation in TileRotation.entries) {
                 val rotatedTile = tile.copy(tileRotation = rotation, position = spot)
                 val valid = isValidPosition(game, rotatedTile, spot)
                 println(" - Trying ${tile.id} at $spot with $rotation: $valid")
@@ -131,12 +133,13 @@ class GameManager(
         return false
     }
 
-     fun calculateScore(gameId: String, placedTile: Tile) {
+     fun calculateScore(gameId: String, placedTile: Tile): List<ScoringEvent> {
+         val events = mutableListOf<ScoringEvent>()
          val game = games[gameId] ?: throw IllegalArgumentException("Game $gameId is not registered")
 
-         if (game.status != GamePhase.SCORING) {
+         if (game.status != GamePhase.SCORING)
              throw IllegalStateException("Game is not in scoring phase")
-         }
+
          // Prüfe alle 4 Himmelsrichtungen + Center
          listOf(
              MeeplePosition.N,
@@ -149,7 +152,12 @@ class GameManager(
              val terrainType = placedTile.getTerrainAtOrNull(direction)
 
              // 2. Nur für CITY/ROAD/MONASTERY weiter prüfen
-             if (terrainType in listOf(TerrainType.CITY, TerrainType.ROAD, TerrainType.MONASTERY) || placedTile.hasMonastery) {
+             if (terrainType in listOf(
+                     TerrainType.CITY,
+                     TerrainType.ROAD,
+                     TerrainType.MONASTERY
+                 ) || placedTile.hasMonastery
+             ) {
 
                  // 3. Alle verbundenen Tiles des Features finden
                  val startEdge = Edge(placedTile.position!!, direction.shortCode)
@@ -165,59 +173,44 @@ class GameManager(
                          game.board,
                          Edge(placedTile.position, direction.shortCode)
                      )
+
                      TerrainType.ROAD -> isRoadCompleted(
                          game.board,
                          Edge(placedTile.position, direction.shortCode)
                      )
+
                      TerrainType.MONASTERY -> isMonasteryComplete(
                          game.board, placedTile.position
                      )
+
                      else -> false
                  }
 
                  if (isCompleted) {
                      // 5. Alle Meeples auf dem Feature sammeln
-                     val startEdge = Edge(placedTile.position, direction.shortCode)
-
                      val involvedMeeples = game.meeplesOnBoard
                          .filter { meeple ->
                              val pos = getTilePosition(game, meeple.tileId) ?: return@filter false
-                             val meeplePos = meeple.position    ?: return@filter false
-                             val tile = game.board[pos]    ?: return@filter false
-                             if (tile.getTerrainAtOrNull(meeplePos) != terrainType) return@filter false
+                             val meeplePos = meeple.position ?: return@filter false
+                             val tile = game.board[pos] ?: return@filter false
 
-                             if (meeplePos == MeeplePosition.C) {
-                                 true
-                             } else {
-                                 edgesConnected(
-                                     board  = game.board,
-                                     start  = startEdge,
-                                     target = Edge(pos, meeplePos.name),
-                                     type   = terrainType
-                                 )
-                             }
+                             if (pos !in featureTiles) return@filter false
+                             tile.getTerrainAtOrNull(meeplePos) == terrainType
                          }
                          .toMutableList()
 
-                     val featureTypeString = when (terrainType) {
-                         TerrainType.CITY -> "CITY"
-                         TerrainType.ROAD -> "ROAD"
-                         TerrainType.MONASTERY -> "MONASTERY"
-                         else -> ""
-                     }
-
                      // 6. Punkte vergeben, Meeples vom Brett entfernen und den Spielern zurückgeben
-                     awardPoints(game, involvedMeeples, featureTiles.size, featureTypeString, featureTiles.toList())
+                     awardPoints(game, involvedMeeples, featureTiles.size, terrainType.name, featureTiles.toList())
+                         ?.also { events += it }
 
-                     if (involvedMeeples.isNotEmpty()) {
-                         game.meeplesOnBoard.removeAll(involvedMeeples)
-                         involvedMeeples.forEach { meeple ->
-                             game.players.first { it.id == meeple.playerId }.remainingMeeple++
-                         }
+                     game.meeplesOnBoard.removeAll(involvedMeeples)
+                     involvedMeeples.forEach { meeple ->
+                         game.players.first { it.id == meeple.playerId }.remainingMeeple++
                      }
                  }
              }
          }
+
          val centre = placedTile.position!!
          listOf(
              0 to 0,
@@ -225,9 +218,27 @@ class GameManager(
              -1 to  0,          1 to  0,
              -1 to  1, 0 to  1, 1 to  1
          ).forEach { (dx, dy) ->
-             val pos = Position(centre.x + dx, centre.y + dy)
-             scoreMonastery(game, pos)
+             val centrePos = Position(centre.x + dx, centre.y + dy)
+
+             val centreTile = game.board[centrePos] ?: return@forEach
+             if (!centreTile.hasMonastery) return@forEach
+             if (!isMonasteryComplete(game.board, centrePos)) return@forEach
+
+             val monks = game.meeplesOnBoard.filter {
+                 it.tileId == centreTile.id && it.position == MeeplePosition.C
+             }
+             if (monks.isEmpty()) return@forEach
+
+             val pts = 9
+             val winner = game.players.first { it.id == monks.first().playerId }
+             winner.score += pts
+             events += ScoringEvent(winner.id, pts, "CLOISTER")
+
+             game.meeplesOnBoard.removeAll(monks)
+             monks.forEach { game.players.first { p -> p.id == it.playerId }.remainingMeeple++ }
          }
+
+         return events
      }
 
     private fun awardPoints(
@@ -236,77 +247,82 @@ class GameManager(
         basePoints: Int,  //Weniger Punkte, hilft bei Endgame Logik zum Beispiel ...
         featureType: String, //Berechnung für Monestary, Road, City
         featureTiles: List<Position>
-    ) {
-    // Überprüfung ob Meeples vorhanden sind und Punkte vergeben werden können
-    if (involvedMeeples.isEmpty()) {
-        println("Keine Meeples für $featureType-Scoring")
-        return
-    }
-
-    // Gruppierung mit Fehlerhandling (Keine Einträge mit Meeple == 0
-    val playerCounts = involvedMeeples
-        .groupBy { it.playerId }
-        .mapValues { (_, meeples) ->
-            meeples.also {
-                if (it.isEmpty()) println("Kritischer Fehler: Leere Meeple-Gruppe")
-            }.size
+    ): ScoringEvent? {
+        // Überprüfung ob Meeples vorhanden sind und Punkte vergeben werden können
+        if (involvedMeeples.isEmpty()) {
+            println("Keine Meeples für $featureType-Scoring")
+            return null
         }
 
-    // Maximalwert mit Fallback
-    val maxCount = playerCounts.maxByOrNull { it.value }?.value ?: run {
-        println("Fehler: Keine gültigen Spieler für $featureType")
-        return
-    }
-
-    // Gewinner ermitteln
-    val winners = playerCounts.filter { it.value == maxCount }.keys
-
-    // Punkteberechnung mit enum für Klarheit
-    val pointsPerFeature = when (featureType) {
-        "CITY" -> {
-            // Add shield bonus of 2 points for applicable city tiles
-            val shieldCount = featureTiles.count { pos ->
-                game.board[pos]?.hasShield == true
+        // Gruppierung mit Fehlerhandling (Keine Einträge mit Meeple == 0
+        val playerCounts = involvedMeeples
+            .groupBy { it.playerId }
+            .mapValues { (_, meeples) ->
+                meeples.also {
+                    if (it.isEmpty()) println("Kritischer Fehler: Leere Meeple-Gruppe")
+                }.size
             }
-            basePoints * 2 + shieldCount * 2
+
+        // Maximalwert mit Fallback
+        val maxCount = playerCounts.maxByOrNull { it.value }?.value ?: run {
+            println("Fehler: Keine gültigen Spieler für $featureType")
+            return null
         }
 
-        "ROAD" -> basePoints
+        // Gewinner ermitteln
+        val winners = playerCounts.filter { it.value == maxCount }.keys
 
-        "MONASTERY" -> {
-            val center = getTilePosition(game, involvedMeeples.first().tileId)!!
-            val ring = listOf(
-                -1 to -1,  0 to -1,  1 to -1,
-                -1 to  0,            1 to  0,
-                -1 to  1,  0 to  1,  1 to  1
-            ).count { (dx, dy) ->
-                game.board.containsKey(Position(center.x + dx, center.y + dy))
+        // Punkteberechnung mit enum für Klarheit
+        val pointsPerFeature = when (featureType) {
+            "CITY" -> {
+                // Add shield bonus of 2 points for applicable city tiles
+                val shieldCount = featureTiles.count { pos ->
+                    game.board[pos]?.hasShield == true
+                }
+                basePoints * 2 + shieldCount * 2
             }
-            val pts = 1 + ring
-            println("Monastery @ $center finished: $ring neighbours, $pts pts")
-            pts
+
+            "ROAD" -> basePoints
+
+            "MONASTERY" -> {
+                val center = getTilePosition(game, involvedMeeples.first().tileId)!!
+                val ring = listOf(
+                    -1 to -1,  0 to -1,  1 to -1,
+                    -1 to  0,            1 to  0,
+                    -1 to  1,  0 to  1,  1 to  1
+                ).count { (dx, dy) ->
+                    game.board.containsKey(Position(center.x + dx, center.y + dy))
+                }
+                val pts = 1 + ring
+                println("Monastery @ $center finished: $ring neighbours, $pts pts")
+                pts
+            }
+
+            else -> {
+                println("Ungültiger Feature-Typ: $featureType")
+                0
+            }
         }
 
-        else -> {
-            println("Ungültiger Feature-Typ: $featureType")
-            0
+        // Nur ein eindeutiger Gewinner erhält Punkte; bei Gleichstand niemand
+        if (winners.size == 1) {
+            val winnerId = winners.first()
+            val player = game.players.find { it.id == winnerId }
+            if (player != null) {
+                player.score += pointsPerFeature
+                println("Punkte vergeben: $pointsPerFeature an $winnerId ($featureType)")
+                return ScoringEvent(winnerId, pointsPerFeature, featureType)
+            }
+        } else if (winners.size > 1) {
+            println("Gleichstand bei $featureType - keine Punkte vergeben")
+            return ScoringEvent(
+                playerId = "Players",
+                points   = 0,
+                feature  = "$featureType tie"
+            )
         }
+        return null
     }
-
-    // Nur ein eindeutiger Gewinner erhält Punkte; bei Gleichstand niemand
-    if (winners.size == 1) {
-        val winnerId = winners.first()
-        val player = game.players.find { it.id == winnerId }
-        if (player != null) {
-            player.score += pointsPerFeature
-            println("Punkte vergeben: $pointsPerFeature an $winnerId ($featureType)")
-        } else {
-            println("Fehler: Gewinner $winnerId existiert nicht")
-        }
-    } else {
-        println("Gleichstand bei $featureType - keine Punkte vergeben")
-    }
-}
 
     fun endGame(gameId: String): String {
         val game = games[gameId] ?: throw IllegalArgumentException("Game not found")
@@ -384,8 +400,6 @@ class GameManager(
                 println("City is completed at $pos")
             }
         }
-
-        //game.nextPlayer() move to endTurn logic
         game.status = GamePhase.MEEPLE_PLACEMENT
         return game
     }
@@ -408,7 +422,7 @@ class GameManager(
         }.filter { it !in game.board.keys }.toSet()
 
         for (spot in potentialSpots) {
-            for (rotation in TileRotation.values()) {
+            for (rotation in TileRotation.entries) {
                 val rotatedTile = tile.copy(tileRotation = rotation, position = spot)
                 val isValid = isValidPosition(game, rotatedTile, spot)
                 if (isValid) {
@@ -603,53 +617,6 @@ class GameManager(
         }
     }
 
-
-    fun getConnectedFeatureTiles(game: GameState, startTile: Tile, startPos: MeeplePosition): List<Position> {
-        val featureType = startTile.getTerrainAtOrNull(startPos)
-            ?: return emptyList()
-
-        val visitedEdges = mutableSetOf<Edge>()
-        val featureTiles = mutableSetOf<Position>()
-        val edgeQueue = ArrayDeque<Edge>()
-
-        val originPos = startTile.position!!
-        edgeQueue += Edge(originPos, startPos.name)
-
-        if (startPos != MeeplePosition.C) {
-            edgeQueue += Edge(originPos, startPos.name)
-        } else {
-            startTile.getRotatedTerrains()
-                .filterValues { it == featureType }
-                .keys
-                .forEach { dir -> edgeQueue += Edge(originPos, dir) }
-        }
-
-        while(edgeQueue.isNotEmpty()){
-            val (pos, dir) = edgeQueue.removeFirst()
-            if (!visitedEdges.add(Edge(pos, dir))) continue
-            featureTiles += pos
-
-            val tile = game.board[pos] ?: continue
-            val terrains = tile.getRotatedTerrains()
-            val center = tile.terrainCenter
-
-            if (terrains[dir] == featureType) {
-                val neighborPos = neighbor(pos, dir)
-                val neighborTile = game.board[neighborPos]
-                if (neighborTile?.getRotatedTerrains()?.get(opposite(dir)) == featureType) {
-                    edgeQueue += Edge(neighborPos, opposite(dir))
-                }
-            }
-
-            if (center == featureType) {
-                listOf("N","E","S","W")
-                    .filter { it != dir && terrains[it] == featureType }
-                    .forEach { edgeQueue += Edge(pos, it) }
-            }
-        }
-        return featureTiles.toList()
-    }
-
     private data class Edge(val pos: Position, val dir: String)
 
     private fun opposite(d: String) = when (d) {
@@ -665,56 +632,35 @@ class GameManager(
         else -> Position(p.x - 1, p.y) // W
     }
 
-    private fun scoreMonastery(game: GameState, centrePos: Position) {
-        val centreTile = game.board[centrePos] ?: return
-        if (!centreTile.hasMonastery) return
-        if (!isMonasteryComplete(game.board, centrePos)) return   // still open
-
-        val monks = game.meeplesOnBoard.filter {
-            it.tileId == centreTile.id && it.position == MeeplePosition.C
-        }
-        if (monks.isEmpty()) return
-
-        val pts = 9
-        val winner = game.players.first { it.id == monks.first().playerId }
-        winner.score += pts
-        println("Monastery @ $centrePos completed → ${winner.id} +$pts")
-
-        game.meeplesOnBoard.removeAll(monks)
-        monks.forEach { game.players.first { p -> p.id == it.playerId }.remainingMeeple++ }
-    }
-
-
-    private fun edgesConnected(board: Map<Position, Tile>, start: Edge, target: Edge, type: TerrainType?): Boolean {
+    private fun edgesConnected(board: Map<Position, Tile>, start: Edge, target: Edge, type: TerrainType) : Boolean {
         val visited = mutableSetOf<Edge>()
         val edgeQueue = ArrayDeque<Edge>()
         edgeQueue += start
 
         while (edgeQueue.isNotEmpty()) {
-            val edge = edgeQueue.removeFirst()
-            if (!visited.add(edge)) continue
-            if (edge == target) return true
+            val (p, d) = edgeQueue.removeFirst()
+            if (!visited.add(Edge(p, d))) continue
+            if (p == target.pos && d == target.dir) return true
 
-            val (pos, dir) = edge
-            val tile = board[pos] ?: continue
-            val terrain = tile.getRotatedTerrains()
-            val centerOk = tile.terrainCenter == type
+            val tile = board[p] ?: continue
+            val terrains = tile.getRotatedTerrains()
+            val centreIsFeature = tile.terrainCenter == type
 
-            if (terrain[dir] == type) {
-                val neighborPos = neighbor(pos, dir)
+            if (terrains[d] == type) {
+                val neighborPos = neighbor(p, d)
                 val neighborTerr = board[neighborPos]?.getRotatedTerrains()
-                if (neighborTerr?.get(opposite(dir)) == type) {
-                    edgeQueue += Edge(neighborPos, opposite(dir))
+                if (neighborTerr?.get(opposite(d)) == type) {
+                    edgeQueue += Edge(neighborPos, opposite(d))
                 }
             }
 
-            if (centerOk && dir != "C") {
-                edgeQueue += Edge(pos, "C")
-            }
-            if (centerOk && dir == "C") {
-                listOf("N","E","S","W")
-                    .filter { it != dir && terrain[it] == type }
-                    .forEach { edgeQueue += Edge(pos, it) }
+            if (centreIsFeature) {
+                if (d != "C") edgeQueue += Edge(p, "C")
+                else {
+                    listOf("N","E","S","W")
+                        .filter { terrains[it] == type }
+                        .forEach { edgeQueue += Edge(p, it) }
+                }
             }
         }
         return false

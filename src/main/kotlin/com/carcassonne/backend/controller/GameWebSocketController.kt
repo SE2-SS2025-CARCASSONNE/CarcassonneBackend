@@ -149,6 +149,8 @@ class GameWebSocketController(
                 }
 
                 game.tileDrawnThisTurn = true
+                game.cheatedThisTurn = false
+                game.currentDrawnTile = drawnTile
 
                 val validPlacementsJson = gameManager
                     .getAllValidPositions(msg.gameId, drawnTile)
@@ -178,6 +180,119 @@ class GameWebSocketController(
                         "deckRemaining" to game.tileDeck.size
                     )
                 )
+            }
+
+            "CHEAT_REDRAW" -> {
+                val game = authorizeTurn(msg) ?: return
+
+                if (game.status != GamePhase.TILE_PLACEMENT || !game.tileDrawnThisTurn) {
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player, "/queue/private",
+                        mapOf("type" to "error", "message" to "Stop shaking your phone...")
+                    )
+                    return
+                }
+
+                if (game.cheatedThisTurn) {
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player, "/queue/private",
+                        mapOf("type" to "error", "message" to "You already cheated this turn...")
+                    )
+                    return
+                }
+
+                game.currentDrawnTile?.let { game.discardedTiles += it }
+
+                val newTile = gameManager.drawTileForPlayer(msg.gameId) ?: run {
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player, "/queue/private",
+                        mapOf("type" to "error", "message" to "There are no tiles left...")
+                    )
+                    return
+                }
+
+                game.currentDrawnTile = newTile
+                game.cheatedThisTurn = true
+                game.cheaterExposed  = false
+
+                val validPlacements = gameManager
+                    .getAllValidPositions(msg.gameId, newTile)
+                    .map { (pos, rot, _) ->
+                        mapOf(
+                            "position" to mapOf("x" to pos.x, "y" to pos.y),
+                            "rotation" to rot.name
+                        )
+                    }
+
+                messagingTemplate.convertAndSendToUser(
+                    msg.player,
+                    "/queue/private",
+                    mapOf(
+                        "type" to "CHEAT_TILE_DRAWN",
+                        "tile" to newTile,
+                        "validPlacements" to validPlacements
+                    )
+                )
+
+                messagingTemplate.convertAndSend(
+                    "/topic/game/${msg.gameId}",
+                    mapOf("type" to "deck_update", "deckRemaining" to game.tileDeck.size)
+                )
+            }
+
+            "EXPOSE_CHEATER" -> {
+                val game = gameManager.getGame(msg.gameId)
+
+                if (msg.player == game.getCurrentPlayer()) {
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player, "/queue/private",
+                        mapOf("type" to "error", "message" to "You can’t expose yourself!")
+                    )
+                    return
+                }
+
+                if (game.cheaterExposed) {
+                    messagingTemplate.convertAndSendToUser(
+                        msg.player, "/queue/private",
+                        mapOf("type" to "error", "message" to "Cheater was already exposed!")
+                    )
+                    return
+                }
+
+                // Correct accusation -> punishment for cheater
+                if (game.cheatedThisTurn) {
+                    val culprit = game.getCurrentPlayer()
+                    if (game.players.first { it.id == culprit }.score > 1){
+                        game.players.first { it.id == culprit }.score -= 2
+                    } else if (game.players.first { it.id == culprit }.score > 0) {
+                        game.players.first { it.id == culprit }.score -= 1
+                    }
+
+                    game.cheaterExposed = true
+
+                    val payload = mapOf(
+                        "type" to "expose_success",
+                        "culprit" to culprit,
+                        "accuser" to msg.player,
+                        "scores" to game.players.map { p -> mapOf("player" to p.id, "score" to p.score) },
+                        "disableExpose" to true
+                    )
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
+
+                } else {
+                    // False accusation -> punishment for accuser
+                    if (game.players.first { it.id == msg.player }.score > 0) {
+                        game.players.first { it.id == msg.player }.score -= 1
+                    }
+
+                    val payload = mapOf(
+                        "type" to "expose_fail",
+                        "player" to msg.player,
+                        "scores" to game.players.map { p -> mapOf("player" to p.id, "score" to p.score) },
+                        "disableExpose" to false
+                    )
+                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
+                }
             }
 
             "place_tile" -> {
@@ -267,7 +382,7 @@ class GameWebSocketController(
                 if (lastTile != null && msg.meeple?.tileId != lastTile.id) {
                     messagingTemplate.convertAndSendToUser(
                         msg.player, "/queue/private",
-                        mapOf("type" to "error", "message" to "You can only place it on the current tile!")
+                        mapOf("type" to "error", "message" to "Place it on the current tile!")
                     )
                     return
                 }
@@ -417,9 +532,10 @@ class GameWebSocketController(
     private fun finalizeTurn(game: GameState, lastTile: Tile) {
         // Recalculate scores and return meeples back to players
         game.status = GamePhase.SCORING
-        val before = game.meeplesOnBoard.toList()
 
-        gameManager.calculateScore(game.gameId, lastTile)
+        val before = game.meeplesOnBoard.toList()
+        val scoringEvents = gameManager.calculateScore(game.gameId, lastTile)
+
         val after = game.meeplesOnBoard.toList()
         val removedMeeples = before.filter { meeple -> meeple !in after }
 
@@ -427,6 +543,9 @@ class GameWebSocketController(
         game.status = GamePhase.TILE_PLACEMENT
         game.nextPlayer()
         game.tileDrawnThisTurn = false
+        game.cheatedThisTurn = false
+        game.cheaterExposed  = false
+        game.currentDrawnTile = null
 
         // Broadcast new scores, meeple counts and next player
         val scorePayload = mapOf(
@@ -442,6 +561,16 @@ class GameWebSocketController(
             "gamePhase"  to game.status.name
         )
         messagingTemplate.convertAndSend("/topic/game/${game.gameId}", scorePayload)
+
+        scoringEvents.forEach { event ->
+            val toastPayload = mapOf(
+                "type"    to "feature_scored",
+                "player"  to event.playerId,
+                "points"  to event.points,
+                "feature" to event.feature
+            )
+            messagingTemplate.convertAndSend("/topic/game/${game.gameId}", toastPayload)
+        }
 
         if (removedMeeples.isNotEmpty()) {
             val removedIds = removedMeeples.map { it.id }
