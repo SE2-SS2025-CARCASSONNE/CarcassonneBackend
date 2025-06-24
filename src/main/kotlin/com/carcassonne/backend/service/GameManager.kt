@@ -74,13 +74,12 @@ class GameManager(
             if (canPlaceTileAnywhere(game, tile)) {
                 println(" Playable tile drawn: ${tile.id}")
                 val validPositions = getAllValidPositions(gameId, tile)
-                println("Valid placements for ${tile.id}: $validPositions")
+                println(" Valid placements for ${tile.id}: $validPositions")
                 return tile
             } else {
                 if (game.tileDeck.isEmpty()) {
                     println("️ Final tile ${tile.id} is unplayable and will NOT be added back.")
                     // Don't add to discardedTiles
-
                 } else {
                     println(" Tile ${tile.id} discarded (no valid position)")
                     game.discardedTiles.add(tile)
@@ -232,7 +231,7 @@ class GameManager(
              val pts = 9
              val winner = game.players.first { it.id == monks.first().playerId }
              winner.score += pts
-             events += ScoringEvent(winner.id, pts, "CLOISTER")
+             events += ScoringEvent(winner.id, pts, "MONASTERY")
 
              game.meeplesOnBoard.removeAll(monks)
              monks.forEach { game.players.first { p -> p.id == it.playerId }.remainingMeeple++ }

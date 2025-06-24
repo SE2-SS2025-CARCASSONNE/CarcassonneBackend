@@ -149,8 +149,8 @@ class GameWebSocketController(
                 }
 
                 game.tileDrawnThisTurn = true
-                game.cheatedThisTurn = false
                 game.currentDrawnTile = drawnTile
+                game.cheatedThisTurn   = false
 
                 val validPlacementsJson = gameManager
                     .getAllValidPositions(msg.gameId, drawnTile)
