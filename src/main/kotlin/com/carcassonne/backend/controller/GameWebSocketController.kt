@@ -142,15 +142,16 @@ class GameWebSocketController(
                 }
 
                 println(">>> [Backend] Handling DRAW_TILE for ${msg.player} in game ${msg.gameId}")
-                val drawnTile  = gameManager.drawTileForPlayer(msg.gameId) ?: run {
-                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}",
-                        mapOf("type" to "error", "message" to "No more playable tiles!"))
+                gameManager.reshuffleDiscardedTiles(msg.gameId)
+                val drawnTile = gameManager.drawTileForPlayer(msg.gameId)
+                if (drawnTile == null) {
+                    endGameAndBroadcast(game)
                     return
                 }
 
                 game.tileDrawnThisTurn = true
                 game.currentDrawnTile = drawnTile
-                game.cheatedThisTurn   = false
+                game.cheatedThisTurn = false
 
                 val validPlacementsJson = gameManager
                     .getAllValidPositions(msg.gameId, drawnTile)
@@ -203,11 +204,10 @@ class GameWebSocketController(
 
                 game.currentDrawnTile?.let { game.discardedTiles += it }
 
-                val newTile = gameManager.drawTileForPlayer(msg.gameId) ?: run {
-                    messagingTemplate.convertAndSendToUser(
-                        msg.player, "/queue/private",
-                        mapOf("type" to "error", "message" to "There are no tiles left...")
-                    )
+                gameManager.reshuffleDiscardedTiles(msg.gameId)
+                val newTile = gameManager.drawTileForPlayer(msg.gameId)
+                if (newTile == null) {
+                    endGameAndBroadcast(game)
                     return
                 }
 
@@ -335,35 +335,8 @@ class GameWebSocketController(
                         )
 
                         messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", boardUpdate)
-
-                        if (g.tileDeck.isEmpty()) {
-                            println(">>> Game ended: no tiles left after place_tile")
-                            g.finishGame()
-                            val winnerId = gameManager.endGame(msg.gameId)
-
-                            val dbGame = gameRepository.findByGameCode(msg.gameId)
-                            if (dbGame != null) {
-                                dbGame.status = GamePhase.FINISHED.name
-                                dbGame.winner = winnerId
-                                gameRepository.save(dbGame)
-                            }
-
-                            g.players.forEach { player ->
-                                val user = userRepository.findUserByUsername(player.id)
-                                if (user != null && player.score > (user.highScore ?: 0)) {
-                                    user.highScore = player.score
-                                    userRepository.save(user)
-                                }
-                            }
-
-                            val payload = mapOf(
-                                "type" to "game_over",
-                                "winner" to winnerId,
-                                "scores" to g.players.map { mapOf("player" to it.id, "score" to it.score) }
-                            )
-                            messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
-                        }
                     }
+
                 } catch (e: Exception) {
                     messagingTemplate.convertAndSendToUser(
                         msg.player,
@@ -467,36 +440,6 @@ class GameWebSocketController(
 
                 val placedTile = game.board.entries.last().value
                 finalizeTurn(game, placedTile)
-
-                // After finalizing turn, check if game ended
-                if (game.tileDeck.isEmpty()) {
-                    println(">>> Game ended: no tiles left after skip_meeple")
-                    game.finishGame()
-                    val winnerId = gameManager.endGame(msg.gameId)
-
-                    val dbGame = gameRepository.findByGameCode(msg.gameId)
-                    if (dbGame != null) {
-                        dbGame.status = GamePhase.FINISHED.name
-                        dbGame.winner = winnerId
-                        gameRepository.save(dbGame)
-                    }
-
-                    // Update high score for ALL players
-                    game.players.forEach { player ->
-                        val user = userRepository.findUserByUsername(player.id)
-                        if (user != null && player.score > (user.highScore ?: 0)) {
-                            user.highScore = player.score
-                            userRepository.save(user)
-                        }
-                    }
-
-                    val payload = mapOf(
-                        "type" to "game_over",
-                        "winner" to winnerId,
-                        "scores" to game.players.map { mapOf("player" to it.id, "score" to it.score) }
-                    )
-                    messagingTemplate.convertAndSend("/topic/game/${msg.gameId}", payload)
-                }
             }
 
             "end_game" -> {
@@ -580,6 +523,17 @@ class GameWebSocketController(
             )
             messagingTemplate.convertAndSend("/topic/game/${game.gameId}", removePayload)
         }
+
+        if (game.tileDeck.isEmpty() && game.discardedTiles.isEmpty()) {
+            endGameAndBroadcast(game)
+        } else if (game.tileDeck.isEmpty()) {
+            game.tileDeck.addAll(game.discardedTiles.shuffled())
+            game.discardedTiles.clear()
+            messagingTemplate.convertAndSend(
+                "/topic/game/${game.gameId}",
+                mapOf("type" to "deck_update", "deckRemaining" to game.tileDeck.size)
+            )
+        }
     }
 
     private fun authorizeTurn(msg: GameMessage): GameState? {
@@ -594,5 +548,35 @@ class GameWebSocketController(
             return null
         }
         return game
+    }
+
+    private fun endGameAndBroadcast(g: GameState) {
+        if (g.status == GamePhase.FINISHED) return
+
+        g.finishGame()
+        gameRepository.updateStatusByGameCode(g.gameId, g.status.name)
+        val winnerId = gameManager.endGame(g.gameId)
+
+        gameRepository.findByGameCode(g.gameId)?.let { dbGame ->
+            dbGame.status = GamePhase.FINISHED.name
+            dbGame.winner = winnerId
+            gameRepository.save(dbGame)
+        }
+
+        g.players.forEach { player ->
+            userRepository.findUserByUsername(player.id)?.let { user ->
+                if (player.score > (user.highScore ?: 0)) {
+                    user.highScore = player.score
+                    userRepository.save(user)
+                }
+            }
+        }
+
+        val payload = mapOf(
+            "type" to "game_over",
+            "winner" to winnerId,
+            "scores" to g.players.map { mapOf("player" to it.id, "score" to it.score) }
+        )
+        messagingTemplate.convertAndSend("/topic/game/${g.gameId}", payload)
     }
 }

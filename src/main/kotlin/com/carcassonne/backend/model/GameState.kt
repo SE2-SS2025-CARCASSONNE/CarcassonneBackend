@@ -29,7 +29,7 @@ data class GameState(
         if (players.size >= 2) {
             status = GamePhase.TILE_PLACEMENT
         } else {
-            throw IllegalStateException("At least 2 players are needed to start the game")
+            error("At least 2 players are needed to start the game")
         }
     }
 
@@ -51,10 +51,9 @@ data class GameState(
     // Add a player to the game
     fun addPlayer(player: String) {
         if (status == GamePhase.WAITING && players.size < 4) {
-            val player = Player(player,0,7,0)
-            players.add(player)
+            players.add(Player(player,0,7,0))
         } else {
-            throw IllegalStateException("Game already started or max players reached")
+            error("Game already started or max players reached")
         }
     }
 
@@ -64,7 +63,7 @@ data class GameState(
             throw IllegalStateException("Game is not in tile placement phase")
         }
         board[position] = tile
-        status = GamePhase.MEEPLE_PLACEMENT // comment-out this line for manually testing place tile (DONT PUSH WITH OUT-COMMENTED LINE OR TESTS WILL BREAK)
+        status = GamePhase.MEEPLE_PLACEMENT
     }
 
     // Draw a tile from the deck
