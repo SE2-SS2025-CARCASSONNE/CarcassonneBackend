@@ -1,6 +1,7 @@
 package com.carcassonne.backend.service
 
 import com.carcassonne.backend.model.*
+import java.util.concurrent.ConcurrentHashMap
 import org.springframework.stereotype.Component
 import kotlin.random.Random
 
@@ -9,7 +10,7 @@ data class ScoringEvent(val playerId: String, val points: Int, val feature: Stri
 @Component
 class GameManager(
 ) {
-    private val games = mutableMapOf<String, GameState>()
+    private val games: MutableMap<String, GameState> = ConcurrentHashMap()
 
     fun createGameWithHost(gameId: String, hostName: String): GameState {
         val host = Player(hostName, 0, 7, 0)
@@ -59,51 +60,38 @@ class GameManager(
 
     fun drawTileForPlayer(gameId: String): Tile? {
         val game = games[gameId] ?: return null
+        var reshuffledOnce = false
 
-        println(" Starting tile draw... Deck size: ${game.tileDeck.size}, Discarded: ${game.discardedTiles.size}")
+        while (true) {
+            if (game.tileDeck.isEmpty()) {
+                if (game.discardedTiles.isEmpty() || reshuffledOnce) {
+                    println("No more playable tiles left.")
+                    return null
+                }
+                println("Reshuffling discarded tiles …")
+                game.tileDeck.addAll(game.discardedTiles.shuffled())
+                game.discardedTiles.clear()
+                reshuffledOnce = true
+                continue
+            }
 
-        // If deck is empty, try reshuffling discarded tiles
+            val tile = game.drawTile()!!
+            if (canPlaceTileAnywhere(game, tile)) {
+                println("Playable tile drawn: ${tile.id}")
+                return tile
+            }
+            println("Tile ${tile.id} discarded (no valid position)")
+            game.discardedTiles.add(tile)
+        }
+    }
+
+    fun reshuffleDiscardedTiles(gameId: String) {
+        val game = games[gameId] ?: return
         if (game.tileDeck.isEmpty() && game.discardedTiles.isNotEmpty()) {
-            println(" Reshuffling discarded tiles...")
+            println("Reshuffling discarded tiles...")
             game.tileDeck.addAll(game.discardedTiles.shuffled())
             game.discardedTiles.clear()
         }
-
-        while (game.tileDeck.isNotEmpty()) {
-            val tile = game.drawTile()!!
-            if (canPlaceTileAnywhere(game, tile)) {
-                println(" Playable tile drawn: ${tile.id}")
-                val validPositions = getAllValidPositions(gameId, tile)
-                println("Valid placements for ${tile.id}: $validPositions")
-                return tile
-            } else {
-                if (game.tileDeck.isEmpty()) {
-                    println("️ Final tile ${tile.id} is unplayable and will NOT be added back.")
-                    // Don't add to discardedTiles
-
-                } else {
-                    println(" Tile ${tile.id} discarded (no valid position)")
-                    game.discardedTiles.add(tile)
-                }
-            }
-        }
-
-        println(">>> No more playable tiles left.")
-        game.finishGame()
-
-        val winnerId = endGame(gameId)
-        val scores = game.players.map {
-            mapOf("player" to it.id, "score" to it.score)
-        }
-
-        val payload = mapOf(
-            "type" to "game_over",
-            "winner" to winnerId,
-            "scores" to scores
-        )
-
-        println(">>> [Backend] Broadcasting game_over: $payload")
-        return null
     }
 
     fun canPlaceTileAnywhere(game: GameState, tile: Tile): Boolean {
@@ -140,31 +128,25 @@ class GameManager(
          if (game.status != GamePhase.SCORING)
              throw IllegalStateException("Game is not in scoring phase")
 
-         // Prüfe alle 4 Himmelsrichtungen + Center
+         // Prüfe alle 4 Himmelsrichtungen
          listOf(
              MeeplePosition.N,
              MeeplePosition.E,
              MeeplePosition.S,
              MeeplePosition.W,
-             MeeplePosition.C
          ).forEach { direction ->
              // 1. Terraintyp der aktuellen Richtung ermitteln
              val terrainType = placedTile.getTerrainAtOrNull(direction)
 
-             // 2. Nur für CITY/ROAD/MONASTERY weiter prüfen
-             if (terrainType in listOf(
-                     TerrainType.CITY,
-                     TerrainType.ROAD,
-                     TerrainType.MONASTERY
-                 ) || placedTile.hasMonastery
-             ) {
+             // 2. Nur für CITY/ROAD weiter prüfen
+             if (terrainType == TerrainType.CITY || terrainType == TerrainType.ROAD) {
 
                  // 3. Alle verbundenen Tiles des Features finden
                  val startEdge = Edge(placedTile.position!!, direction.shortCode)
                  val featureTiles = collectFeatureTiles(
                      board = game.board,
                      start = startEdge,
-                     type = terrainType!!
+                     type = terrainType
                  )
 
                  // 4. Abschluss des Features prüfen
@@ -177,10 +159,6 @@ class GameManager(
                      TerrainType.ROAD -> isRoadCompleted(
                          game.board,
                          Edge(placedTile.position, direction.shortCode)
-                     )
-
-                     TerrainType.MONASTERY -> isMonasteryComplete(
-                         game.board, placedTile.position
                      )
 
                      else -> false
@@ -232,7 +210,7 @@ class GameManager(
              val pts = 9
              val winner = game.players.first { it.id == monks.first().playerId }
              winner.score += pts
-             events += ScoringEvent(winner.id, pts, "CLOISTER")
+             events += ScoringEvent(winner.id, pts, "MONASTERY")
 
              game.meeplesOnBoard.removeAll(monks)
              monks.forEach { game.players.first { p -> p.id == it.playerId }.remainingMeeple++ }
@@ -400,7 +378,6 @@ class GameManager(
                 println("City is completed at $pos")
             }
         }
-        game.status = GamePhase.MEEPLE_PLACEMENT
         return game
     }
 

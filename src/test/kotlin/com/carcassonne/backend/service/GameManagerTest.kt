@@ -121,7 +121,7 @@ class GameManagerTest {
         )
 
         assertNotNull(updated)
-        assertEquals(tile, updated?.board?.get(Position(0,0)))
+        assertEquals(tile, updated.board[Position(0,0)])
     }
 
     @Test
@@ -161,8 +161,8 @@ class GameManagerTest {
         )
 
         assertNotNull(updated)
-        assertEquals(tile1, updated?.board?.get(Position(0,-1)))
-        assertEquals(tile2, updated?.board?.get(Position(1,-1)))
+        assertEquals(tile1, updated.board[Position(0,-1)])
+        assertEquals(tile2, updated.board[Position(1,-1)])
     }
 
     @Test
@@ -250,7 +250,7 @@ class GameManagerTest {
         assertNotNull(updatedGameState, "Meeple should be placed successfully")
 
         // Optional: Überprüfen, ob der Meeple tatsächlich in der GameState-Liste ist
-        assertTrue(updatedGameState!!.meeplesOnBoard.contains(meeple))
+        assertTrue(updatedGameState.meeplesOnBoard.contains(meeple))
     }
 
     @Test
@@ -300,7 +300,7 @@ class GameManagerTest {
         val gameStateAfterFirstMeeple = gameManager.placeMeeple(gameId, "Player1", meeple1, MeeplePosition.E)
 
         assertNotNull(gameStateAfterFirstMeeple, "First meeple should be placed successfully")
-        assertTrue(gameStateAfterFirstMeeple!!.meeplesOnBoard.contains(meeple1))
+        assertTrue(gameStateAfterFirstMeeple.meeplesOnBoard.contains(meeple1))
 
         // Zweiter Spieler versucht, einen Meeple auf dieselbe Position zu setzen
         val meeple2 = Meeple(id = "meeple2", playerId = "Player2", tileId = tile.id)
@@ -333,7 +333,7 @@ class GameManagerTest {
         val gameStateAfterFirstMeeple = gameManager.placeMeeple(gameId, "Player1", meeple1, MeeplePosition.E)
 
         assertNotNull(gameStateAfterFirstMeeple, "First meeple should be placed successfully")
-        assertTrue(gameStateAfterFirstMeeple!!.meeplesOnBoard.contains(meeple1))
+        assertTrue(gameStateAfterFirstMeeple.meeplesOnBoard.contains(meeple1))
 
         // Derselbe Spieler versucht, einen zweiten Meeple auf Westen (ROAD) zu setzen
         val meeple2 = Meeple(id = "meeple2", playerId = "Player1", tileId = tile.id)
@@ -368,7 +368,7 @@ class GameManagerTest {
 
         // Erwartung: Meeple sollte erfolgreich platziert werden
         assertNotNull(updatedGameState, "Meeple should be placed successfully on rotated tile")
-        assertTrue(updatedGameState!!.meeplesOnBoard.contains(meeple))
+        assertTrue(updatedGameState.meeplesOnBoard.contains(meeple))
     }
 
     @Test
@@ -514,7 +514,7 @@ class GameManagerTest {
         val updatedGameState = gameManager.placeMeeple(gameId, "Player1", meepleValid, MeeplePosition.C)
 
         assertNotNull(updatedGameState, "Meeple should be placed successfully")
-        assertTrue(updatedGameState!!.meeplesOnBoard.contains(meepleValid))
+        assertTrue(updatedGameState.meeplesOnBoard.contains(meepleValid))
 
         game.nextPlayer()
         game.status = GamePhase.TILE_PLACEMENT
@@ -1068,7 +1068,7 @@ class GameManagerTest {
         val drawnTile = gameManager.drawTileForPlayer(gameId)
 
         assertNotNull(drawnTile, "Expected a playable tile to be drawn from reshuffled discarded tiles")
-        assertEquals(tile.id, drawnTile?.id, "Expected the reshuffled tile to match the discarded one")
+        assertEquals(tile.id, drawnTile.id, "Expected the reshuffled tile to match the discarded one")
     }
 
 }
