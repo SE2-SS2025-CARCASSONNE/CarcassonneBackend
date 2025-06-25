@@ -1,5 +1,3 @@
-![App Logo](docs/images/logo_pxart.png)
-
 # 📗 Carcassonne: Install‑Guide (Backend & Frontend)
 
 > **Wichtig:** Die auf itch.io zum Download bereitgestellte APK enthält eine fest kodierte IP. Für ein
