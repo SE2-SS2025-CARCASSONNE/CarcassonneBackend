@@ -5,7 +5,9 @@
 > lokale IP anpassen.
 
 ---
-[Hier geht's zur detaillierten Projektbeschreibung!](https://github.com/SE2-SS2025-CARCASSONNE/CarcassonneFrontend)
+👉 [Hier geht's zur Projekt-Homepage auf itch.io!](https://j0klar.itch.io/pixel-carcassonne)
+
+👉 [Und hier zur detaillierten Projektbeschreibung!](https://github.com/SE2-SS2025-CARCASSONNE/CarcassonneFrontend)
 
 ## 📑 Inhaltsverzeichnis
 
