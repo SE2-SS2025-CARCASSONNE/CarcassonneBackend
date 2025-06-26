@@ -1,11 +1,8 @@
 # 📗 Carcassonne: Server Setup Guide
 
----
 👉 [Projekt-Homepage auf itch.io (+ APK Download)](https://j0klar.itch.io/pixel-carcassonne)
 
 👉 [Frontend-Repository mit Projektbeschreibung](https://github.com/SE2-SS2025-CARCASSONNE/CarcassonneFrontend)
-
----
 
 ## 🖥️ Server einrichten
 
