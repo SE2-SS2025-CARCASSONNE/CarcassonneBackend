@@ -1,25 +1,10 @@
-# 📗 Carcassonne: Install‑Guide (Backend & Frontend)
+# 📗 Carcassonne: Server Setup Guide
 
-> **Wichtig:** Die auf itch.io zum Download bereitgestellte APK enthält eine fest kodierte IP. Für ein
-> funktionierendes Spiel musst du **Backend + Frontend** selbst kompilieren und an deine
-> lokale IP anpassen.
+👉 [Projekt-Homepage auf itch.io (+ APK Download)](https://j0klar.itch.io/pixel-carcassonne)
 
----
-👉 [Hier geht's zur Projekt-Homepage auf itch.io!](https://j0klar.itch.io/pixel-carcassonne)
+👉 [Frontend-Repository mit Projektbeschreibung](https://github.com/SE2-SS2025-CARCASSONNE/CarcassonneFrontend)
 
-👉 [Und hier zur detaillierten Projektbeschreibung!](https://github.com/SE2-SS2025-CARCASSONNE/CarcassonneFrontend)
-
-## 📑 Inhaltsverzeichnis
-
-1. [Backend einrichten](#backend-einrichten)
-2. [Frontend einrichten](#frontend-einrichten)
-3. [Spiel starten](#spiel-starten)
-4. [FAQ & Troubleshooting](#faq--troubleshooting)
-5. [Links](#links)
-
----
-
-## 🖥️ Backend einrichten
+## 🖥️ Server einrichten
 
 1. **Repo klonen**
    ```bash
@@ -50,58 +35,24 @@
 
 ---
 
-## 📱 Frontend einrichten
+## 📱 App einrichten
 
-1. **Repo klonen**
-   ```bash
-   git clone https://github.com/SE2-SS2025-CARCASSONNE/CarcassonneFrontend.git
-   cd CarcassonneFrontend
-   ```
-
-2. **IP‑Adresse anpassen**
-    - In `MyClient.kt`:
-      ```kotlin
-      webSocketURI = "ws://<DEINE-IP>:8080/game"  // 🔧 anpassen
-      ```
-    - In `ApiClient.kt`:
-      ```kotlin
-      baseUrl = "http://<DEINE-IP>:8080/api/"   // 🔧 anpassen
-      ```
-
-3. **Cleartext Traffic erlauben**  
-   Datei: `app/src/main/res/xml/network_security_config.xml`
-   ```xml
-   <base-config cleartextTrafficPermitted="true" />  <!-- 🔧 -->
-   ```
-
-4. **App bauen & installieren**
-   ```bash
-   ./gradlew installDebug
-   ```  
-   Oder in Android Studio auf **Run** klicken.
+1. **[Aktuelle APK von itch.io downloaden & installieren](https://j0klar.itch.io/pixel-carcassonne)**
 
 ---
 
 ## 🎮 Spiel starten
 
-1. Sicherstellen, dass **Backend** unter `http://<DEINE-IP>:8080` erreichbar ist.
-2. Android-Gerät oder Emulator im **gleichen LAN** starten.
-3. App öffnen → Einloggen → Lobby erstellen/beitreten → Spiel beginnen!
+1. Sicherstellen, dass **Backend** unter `http://<DEINE-IP>:8080` erreichbar ist
+2. Android-Gerät oder Emulator im **gleichen LAN** starten
+4. App öffnen → **Server IP eintragen** → Registrieren/Einloggen → Lobby erstellen/beitreten → Spiel beginnen!
 
 ---
 
 ## ❓ FAQ & Troubleshooting
 
-| Problem                                   | Lösung                                                             |
-|-------------------------------------------|--------------------------------------------------------------------|
-| **„Cannot connect“ / Netzwerkfehler**     | 1. Backend läuft? 2. IP korrekt eingetragen? 3. Geräte im LAN?     |
-| **Cleartext Traffic blockiert**           | network_security_config.xml + Manifest-Eintrag prüfen             |
-| **DB-Migration schlägt fehl**             | Zugangsdaten in `application.properties` prüfen; Schema wird auto. erzeugt |
+| Problem                                  | Lösung                                                                           |
+|------------------------------------------|----------------------------------------------------------------------------------|
+| **„Failed to connect“ / Netzwerkfehler** | 1. Server läuft? 2. IP korrekt eingetragen? 3. Geräte im LAN?                    |
+| **Datenbankfehler**                      | Zugangsdaten in `application.properties` prüfen; Schema wird automatisch erzeugt |
 
----
-
-## 🔗 Links
-
-- **Backend‑Repo:** https://github.com/SE2-SS2025-CARCASSONNE/CarcassonneBackend
-- **Frontend‑Repo:** https://github.com/SE2-SS2025-CARCASSONNE/CarcassonneFrontend
-- **itch.io-Page:** https://j0klar.itch.io/pixel-carcassonne  
